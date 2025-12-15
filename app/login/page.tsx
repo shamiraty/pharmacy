@@ -18,6 +18,9 @@ export default function LoginPage() {
     setError('');
     setLoading(true);
 
+    // Prefetch immediately
+    router.prefetch('/dashboard');
+
     try {
       const response = await fetch('/api/auth/login', {
         method: 'POST',
@@ -31,18 +34,22 @@ export default function LoginPage() {
         // Save user session
         setUserSession(data.user);
 
-        // Show success message
+        // Show success message (Reduced timer)
         await Swal.fire({
           title: 'Welcome!',
           text: `Logged in as ${data.user.full_name}`,
           icon: 'success',
-          timer: 1500,
+          timer: 1000,
           showConfirmButton: false,
         });
 
         // Redirect to dashboard
         router.push('/dashboard');
+
+        // DO NOT set loading(false) here. 
+        // Let it spin until page transition is complete.
       } else {
+        setLoading(false); // Only stop loading on error
         // Handle rate limiting
         if (response.status === 429) {
           await Swal.fire({
@@ -57,9 +64,8 @@ export default function LoginPage() {
         }
       }
     } catch (error) {
-      setError('Login failed. Please try again.');
-    } finally {
       setLoading(false);
+      setError('Login failed. Please try again.');
     }
   };
 
@@ -154,7 +160,7 @@ export default function LoginPage() {
           <div className="mt-6 text-center">
             <p className="text-sm text-gray-600">
               Default credentials: <br />
-              <span className="font-mono text-xs">admin@pharmacy.com / admin123</span>
+              <span className="font-mono text-xs">demo@pharmacy.com / 12345678</span>
             </p>
           </div>
         </div>

@@ -17,7 +17,12 @@ import { getUserSession, clearUserSession } from '@/lib/auth';
 import { getDarkMode, setDarkMode as saveDarkMode } from '@/lib/theme';
 import Swal from 'sweetalert2';
 
-export default function Topbar() {
+interface TopbarProps {
+  collapsed: boolean;
+  setMobileMenuOpen: (open: boolean) => void;
+}
+
+export default function Topbar({ collapsed, setMobileMenuOpen }: TopbarProps) {
   const router = useRouter();
   const [currentTime, setCurrentTime] = useState<Date | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
@@ -116,11 +121,15 @@ export default function Topbar() {
   ];
 
   return (
-    <div className="h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 fixed top-0 right-0 left-0 lg:left-64 z-30 shadow-sm transition-colors duration-200">
+    <div className={`h-16 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 fixed top-0 right-0 z-30 shadow-sm transition-all duration-300 ${collapsed ? 'left-0 lg:left-20' : 'left-0 lg:left-64'
+      }`}>
       <div className="h-full px-4 lg:px-6 flex items-center justify-between">
         {/* Left Section - Search */}
         <div className="flex items-center space-x-4 flex-1">
-          <button className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors">
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
+          >
             <Menu className="w-5 h-5 text-gray-600" />
           </button>
 
@@ -184,13 +193,12 @@ export default function Topbar() {
                     >
                       <div className="flex items-start space-x-3">
                         <div
-                          className={`w-2 h-2 rounded-full mt-2 ${
-                            notif.type === 'warning'
-                              ? 'bg-yellow-500'
-                              : notif.type === 'error'
+                          className={`w-2 h-2 rounded-full mt-2 ${notif.type === 'warning'
+                            ? 'bg-yellow-500'
+                            : notif.type === 'error'
                               ? 'bg-red-500'
                               : 'bg-green-500'
-                          }`}
+                            }`}
                         />
                         <div className="flex-1">
                           <p className="text-sm text-gray-800 dark:text-gray-200">
