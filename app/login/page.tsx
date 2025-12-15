@@ -43,8 +43,8 @@ export default function LoginPage() {
           showConfirmButton: false,
         });
 
-        // Redirect to dashboard
-        router.push('/dashboard');
+        // Redirect to dashboard (Force reload to ensure middleware sees cookie)
+        window.location.href = '/dashboard';
 
         // DO NOT set loading(false) here. 
         // Let it spin until page transition is complete.
