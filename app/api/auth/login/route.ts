@@ -17,8 +17,8 @@ export async function POST(request: NextRequest) {
 
     // Get client IP for rate limiting
     const clientIp = request.headers.get('x-forwarded-for') ||
-                     request.headers.get('x-real-ip') ||
-                     'unknown';
+      request.headers.get('x-real-ip') ||
+      'unknown';
     const identifier = `${email}:${clientIp}`;
 
     // Check rate limit
@@ -90,11 +90,16 @@ export async function POST(request: NextRequest) {
     resetAttempts(identifier);
 
     // Log the login activity
-    query(
-      `INSERT INTO activity_logs (user_id, action, details, ip_address)
-       VALUES (?, 'login', 'User logged in successfully', ?)`,
-      [user.id, clientIp]
-    );
+    try {
+      query(
+        `INSERT INTO activity_logs (user_id, action, details, ip_address)
+         VALUES (?, 'login', 'User logged in successfully', ?)`,
+        [user.id, clientIp]
+      );
+    } catch (logError) {
+      // Ignore logging errors in read-only environments (like Vercel)
+      console.warn('Failed to log login activity (non-critical):', logError);
+    }
 
     // Return user data (without password)
     return NextResponse.json({
