@@ -22,7 +22,11 @@ export default function BackupPage() {
     const [creating, setCreating] = useState(false);
     const [restoring, setRestoring] = useState(false);
     const [userIsAdmin, setUserIsAdmin] = useState(false);
-    // ... states ...
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage] = useState(5);
+    const [previewData, setPreviewData] = useState<any>(null);
+    const [showPreview, setShowPreview] = useState(false);
+    const [previewLoading, setPreviewLoading] = useState(false);
 
     useEffect(() => {
         const checkAccess = async () => {
