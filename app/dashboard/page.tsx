@@ -268,37 +268,48 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="space-y-6">
-        {/* Skeleton for Today's Stats */}
-        <div className="bg-white border-2 border-gray-100 rounded-xl p-6 shadow-sm">
-          <div className="flex items-center space-x-3 mb-4">
-            <Skeleton className="w-10 h-10 rounded-full" />
-            <Skeleton className="h-8 w-48" />
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Skeleton className="h-24 rounded-xl" />
-            <Skeleton className="h-24 rounded-xl" />
-          </div>
-        </div>
-
-        {/* Skeleton for Stat Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-              <div className="flex justify-between items-start">
-                <div className="space-y-2 flex-1">
-                  <Skeleton className="h-4 w-24" />
-                  <Skeleton className="h-8 w-32" />
-                </div>
-                <Skeleton className="w-12 h-12 rounded-lg" />
-              </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          {/* Left Column Skeleton (Top Selling) */}
+          <div className="bg-white rounded-xl p-6 shadow-md border border-gray-200">
+            <div className="flex items-center mb-6">
+              <Skeleton className="w-6 h-6 mr-2 rounded-full" />
+              <Skeleton className="h-6 w-48 rounded" />
             </div>
-          ))}
-        </div>
+            <div className="space-y-2">
+              {[...Array(8)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between p-2 rounded-lg border border-gray-100 bg-gray-50/50">
+                  <div className="flex items-center space-x-3 flex-1">
+                    <Skeleton className="w-10 h-10 rounded-lg flex-shrink-0" />
+                    <div className="space-y-1.5 flex-1">
+                      <Skeleton className="h-4 w-3/4 rounded" />
+                      <Skeleton className="h-3 w-1/2 rounded" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5 text-right ml-2">
+                    <Skeleton className="h-4 w-20 ml-auto rounded" />
+                    <Skeleton className="h-3 w-12 ml-auto rounded" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-        {/* Skeleton for Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <Skeleton className="h-[400px] rounded-xl" />
-          <Skeleton className="h-[400px] rounded-xl" />
+          {/* Right Column Skeleton */}
+          <div className="space-y-6">
+            <Skeleton className="h-[350px] w-full rounded-xl shadow-sm border border-gray-200" /> {/* Graph */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {[...Array(6)].map((_, i) => (
+                <div key={i} className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex justify-between items-center">
+                  <div className="space-y-2">
+                    <Skeleton className="h-3 w-24 rounded" />
+                    <Skeleton className="h-6 w-20 rounded" />
+                    {i < 2 && <Skeleton className="h-2 w-16 rounded mt-1" />}
+                  </div>
+                  <Skeleton className="w-10 h-10 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -318,14 +329,14 @@ export default function DashboardPage() {
             <Package className="w-6 h-6 mr-2 text-blue-600" />
             Top Selling Medicines
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {(stats.topSelling || [])
               .slice((topMedPage - 1) * itemsPerPage, topMedPage * itemsPerPage)
               .map((medicine: any, index: number) => (
                 <div
                   key={index}
                   onClick={() => handleMedicineClick(medicine)}
-                  className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 cursor-pointer group"
+                  className="flex items-center justify-between p-2 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all border border-gray-200 cursor-pointer group"
                 >
                   <div className="flex items-center space-x-3 flex-1 min-w-0">
                     <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center font-bold text-blue-600 flex-shrink-0">
