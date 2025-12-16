@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Users, UserPlus, Shield, User as UserIcon, Edit2, Trash2 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import Pagination from '@/components/Pagination';
-import LoadingSpinner from '@/components/LoadingSpinner';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 import { isAdmin } from '@/lib/auth';
 
 interface User {
@@ -248,17 +248,18 @@ export default function UsersPage() {
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <LoadingSpinner message="Loading users..." />
+          <TableSkeleton columns={5} rows={10} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="w-full min-w-[1000px] text-sm text-left border-collapse border border-gray-300">
+              <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Name</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Email</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Role</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Status</th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">Actions</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">S/N</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Name</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Email</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Role</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Status</th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -268,43 +269,43 @@ export default function UsersPage() {
                     (currentPage - 1) * itemsPerPage,
                     currentPage * itemsPerPage
                   );
-                  return paginatedUsers.map((user) => (
+                  return paginatedUsers.map((user, index) => (
                     <tr
                       key={user.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                      className="even:bg-gray-50 hover:bg-blue-50 transition-colors"
                     >
-                      <td className="py-4 px-6 font-medium text-gray-900">{user.full_name}</td>
-                      <td className="py-4 px-6 text-gray-700">{user.email}</td>
-                      <td className="py-4 px-6">{getRoleBadge(user.role)}</td>
-                      <td className="py-4 px-6">
-                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                          user.status === 'active'
-                            ? 'bg-green-100 text-green-800'
-                            : 'bg-gray-100 text-gray-800'
-                        }`}>
+                      <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                      <td className="py-3 px-4 font-medium text-gray-900 border border-gray-300">{user.full_name}</td>
+                      <td className="py-3 px-4 text-gray-700 border border-gray-300">{user.email}</td>
+                      <td className="py-3 px-4 border border-gray-300">{getRoleBadge(user.role)}</td>
+                      <td className="py-3 px-4 border border-gray-300">
+                        <span className={`px-2 py-1 rounded-full text-xs font-medium ${user.status === 'active'
+                          ? 'bg-green-100 text-green-800'
+                          : 'bg-gray-100 text-gray-800'
+                          }`}>
                           {user.status.charAt(0).toUpperCase() + user.status.slice(1)}
                         </span>
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 border border-gray-300">
                         {userIsAdmin ? (
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleEdit(user)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                               title="Edit User"
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => handleDelete(user.id)}
-                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                               title="Delete User"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
                         ) : (
-                          <span className="text-sm text-gray-500">No actions</span>
+                          <span className="text-xs text-gray-500 italic">No actions</span>
                         )}
                       </td>
                     </tr>
@@ -330,8 +331,8 @@ export default function UsersPage() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-2xl font-bold text-gray-900">Add New User</h2>
+            <div className="bg-gradient-to-b from-primary-700 to-primary-800 px-6 py-4 rounded-t-xl">
+              <h2 className="text-2xl font-bold text-white">Add New User</h2>
             </div>
 
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
@@ -421,8 +422,8 @@ export default function UsersPage() {
       {showEditModal && selectedUser && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-md w-full">
-            <div className="border-b border-gray-200 px-6 py-4">
-              <h2 className="text-2xl font-bold text-gray-900">Edit User</h2>
+            <div className="bg-gradient-to-b from-primary-700 to-primary-800 px-6 py-4 rounded-t-xl">
+              <h2 className="text-2xl font-bold text-white">Edit User</h2>
             </div>
 
             <form onSubmit={handleUpdate} className="p-6 space-y-4">

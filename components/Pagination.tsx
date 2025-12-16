@@ -33,7 +33,7 @@ export default function Pagination({
   }
 
   return (
-    <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200 bg-white">
+    <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 border-t border-gray-200 bg-white gap-4">
       <div className="text-sm text-gray-700">
         Showing <span className="font-medium">{startItem}</span> to{' '}
         <span className="font-medium">{endItem}</span> of{' '}
@@ -67,11 +67,10 @@ export default function Pagination({
             <button
               key={page}
               onClick={() => onPageChange(page)}
-              className={`px-3 py-2 border rounded-lg transition-colors text-sm ${
-                currentPage === page
+              className={`px-3 py-2 border rounded-lg transition-colors text-sm ${currentPage === page
                   ? 'bg-primary-600 text-white border-primary-600'
                   : 'border-gray-300 hover:bg-gray-50'
-              }`}
+                }`}
             >
               {page}
             </button>

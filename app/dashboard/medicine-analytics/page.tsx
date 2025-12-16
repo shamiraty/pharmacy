@@ -32,6 +32,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2';
 import LoadingSpinner from '@/components/LoadingSpinner';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 export default function MedicineAnalyticsPage() {
   const [analytics, setAnalytics] = useState({
@@ -47,16 +48,37 @@ export default function MedicineAnalyticsPage() {
   const [stockTrendData, setStockTrendData] = useState<any[]>([]);
   const [expiringMedicines, setExpiringMedicines] = useState<any[]>([]);
   const [lowStockMedicines, setLowStockMedicines] = useState<any[]>([]);
+  const [deadStock, setDeadStock] = useState<any[]>([]);
+  const [topMovers, setTopMovers] = useState<any[]>([]);
+  const [mostProfitable, setMostProfitable] = useState<any[]>([]);
+
+  // Smart Analytics State
+  const [abcData, setAbcData] = useState<any>({ a: [], b: [], c: [] });
+  const [forecasts, setForecasts] = useState<any[]>([]);
+  const [reorderSuggestions, setReorderSuggestions] = useState<any[]>([]);
+  const [smartInsights, setSmartInsights] = useState<any>({ critical: [], overstock: [] });
+
   const [showExportModal, setShowExportModal] = useState(false);
+
+  // Default to last 30 days for initial view? Or all time?
+  // Let's default to "All Time" (empty) but allow setting.
+  const [dateFilter, setDateFilter] = useState({
+    start: new Date(new Date().setMonth(new Date().getMonth() - 1)).toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
 
   useEffect(() => {
     fetchAnalytics();
-  }, []);
+  }, [dateFilter]);
 
   const fetchAnalytics = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/medicines');
+      const params = new URLSearchParams();
+      if (dateFilter.start) params.append('salesStartDate', dateFilter.start);
+      if (dateFilter.end) params.append('salesEndDate', dateFilter.end);
+
+      const response = await fetch(`/api/medicines?${params.toString()}`);
       const data = await response.json();
 
       if (data.success) {
@@ -91,6 +113,88 @@ export default function MedicineAnalyticsPage() {
           expired,
           totalValue,
         });
+
+        // Deep Analysis Calculations
+
+        // 1. Dead Stock (No sales in period, but has stock) - RISK
+        const dead = medicines
+          .filter((m: any) => (m.total_sold_qty || 0) === 0 && m.quantity_in_stock > 0)
+          .map((m: any) => ({
+            ...m,
+            locked_capital: m.quantity_in_stock * (m.purchase_price_per_carton && m.units_per_carton ? (m.purchase_price_per_carton / m.units_per_carton) : 0)
+          }))
+          .sort((a: any, b: any) => b.locked_capital - a.locked_capital);
+        setDeadStock(dead.slice(0, 10));
+
+        // 2. Top Movers (Highest Quantity Sold)
+        const movers = [...medicines]
+          .filter((m: any) => (m.total_sold_qty || 0) > 0)
+          .sort((a: any, b: any) => (b.total_sold_qty || 0) - (a.total_sold_qty || 0));
+        setTopMovers(movers.slice(0, 5));
+
+        // 3. Most Profitable (Revenue - Cost)
+        const profitable = medicines.map((m: any) => {
+          const costPerUnit = (m.purchase_price_per_carton && m.units_per_carton) ? (m.purchase_price_per_carton / m.units_per_carton) : 0;
+          const totalCost = (m.total_sold_qty || 0) * costPerUnit;
+          const revenue = m.total_sold_value || 0;
+          return { ...m, estimated_profit: revenue - totalCost };
+        })
+          .filter((m: any) => m.estimated_profit > 0)
+          .sort((a: any, b: any) => b.estimated_profit - a.estimated_profit);
+        setMostProfitable(profitable.slice(0, 5));
+
+        // SMART ANALYTICS (Forecasting & ABC)
+        const start = new Date(dateFilter.start);
+        const end = new Date(dateFilter.end);
+        const daysPeriod = Math.max(1, Math.ceil((end.getTime() - start.getTime()) / (1000 * 3600 * 24)));
+
+        // Forecasting
+        const forecastList = medicines.map((m: any) => {
+          const sold = m.total_sold_qty || 0;
+          const dailyRate = sold / daysPeriod; // Avg sales per day
+          const daysRemaining = dailyRate > 0 ? (m.quantity_in_stock / dailyRate) : 999;
+          const targetStock = dailyRate * 30; // Target 30 days stock
+          const suggestedReorder = Math.max(0, Math.ceil(targetStock - m.quantity_in_stock));
+
+          return {
+            ...m,
+            dailyRate,
+            daysRemaining,
+            suggestedReorder,
+            status: daysRemaining < 7 ? 'Critical' : daysRemaining < 30 ? 'Low' : 'Good'
+          };
+        });
+        setForecasts(forecastList);
+
+        const critical = forecastList.filter((f: any) => f.daysRemaining < 7 && f.dailyRate > 0).sort((a: any, b: any) => a.daysRemaining - b.daysRemaining);
+        const overstock = forecastList.filter((f: any) => f.daysRemaining > 90 && f.quantity_in_stock > 0).sort((a: any, b: any) => b.daysRemaining - a.daysRemaining);
+        const reorder = forecastList.filter((f: any) => f.suggestedReorder > 0).sort((a: any, b: any) => b.suggestedReorder - a.suggestedReorder);
+
+        setSmartInsights({ critical, overstock });
+        setReorderSuggestions(reorder.slice(0, 20));
+
+        // ABC Analysis (Pareto - Based on Revenue)
+        const sortedByRev = [...medicines].sort((a: any, b: any) => (b.total_sold_value || 0) - (a.total_sold_value || 0));
+        const totalRevenue = sortedByRev.reduce((sum: number, m: any) => sum + (m.total_sold_value || 0), 0);
+
+        let cumulative = 0;
+        const abc = { a: [] as any[], b: [] as any[], c: [] as any[] };
+
+        sortedByRev.forEach((m: any) => {
+          const rev = m.total_sold_value || 0;
+          if (rev > 0) {
+            cumulative += rev;
+            const percentage = (cumulative / totalRevenue) * 100;
+
+            if (percentage <= 70) abc.a.push(m); // Class A: Top 70% Revenue
+            else if (percentage <= 90) abc.b.push(m); // Class B: Next 20%
+            else abc.c.push(m); // Class C: Bottom 10%
+          } else {
+            abc.c.push(m); // No sales = C
+          }
+        });
+        setAbcData(abc);
+
 
         // Category distribution
         const categoryMap: any = {};
@@ -394,22 +498,22 @@ export default function MedicineAnalyticsPage() {
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
           </div>
-          <div className="h-10 w-32 bg-gray-200 rounded-lg animate-pulse"></div>
+          <Skeleton className="h-10 w-32 rounded-lg" />
         </div>
 
         {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse">
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex justify-between items-start">
                 <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  <div className="h-8 bg-gray-200 rounded w-32"></div>
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-32" />
                 </div>
-                <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                <Skeleton className="w-12 h-12 rounded-lg" />
               </div>
             </div>
           ))}
@@ -417,14 +521,21 @@ export default function MedicineAnalyticsPage() {
 
         {/* Charts Section Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[400px] animate-pulse"></div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[400px] animate-pulse"></div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[400px]">
+            <Skeleton className="w-full h-full rounded-xl" />
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[400px]">
+            <Skeleton className="w-full h-full rounded-xl" />
+          </div>
         </div>
 
         {/* Alerts Section Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[300px] animate-pulse"></div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[300px] animate-pulse"></div>
+          {[...Array(2)].map((_, i) => (
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[300px]">
+              <Skeleton className="w-full h-full rounded-xl" />
+            </div>
+          ))}
         </div>
       </div>
     );
@@ -461,21 +572,48 @@ export default function MedicineAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+      {/* Header & Filters */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-gray-900">Medicine Analytics</h1>
           <p className="text-gray-600 mt-1">
-            Comprehensive inventory and stock analysis
+            Deep analysis of inventory performance
           </p>
         </div>
-        <button
-          onClick={() => setShowExportModal(true)}
-          className="px-4 py-2 bg-gradient-to-r from-green-600 to-green-700 text-white rounded-lg hover:from-green-700 hover:to-green-800 transition-all shadow-md flex items-center space-x-2"
-        >
-          <Download className="w-5 h-5" />
-          <span>Export Report</span>
-        </button>
+
+        <div className="flex flex-col sm:flex-row gap-4 items-end bg-white p-4 rounded-2xl border border-gray-100 shadow-sm w-full md:w-auto">
+          <div className="w-full sm:w-auto">
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-1">From Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={dateFilter.start}
+                onChange={(e) => setDateFilter({ ...dateFilter, start: e.target.value })}
+                className="w-full sm:w-40 pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-gray-700"
+              />
+            </div>
+          </div>
+          <div className="w-full sm:w-auto">
+            <label className="block text-xs font-semibold text-gray-500 mb-1.5 ml-1">To Date</label>
+            <div className="relative">
+              <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+              <input
+                type="date"
+                value={dateFilter.end}
+                onChange={(e) => setDateFilter({ ...dateFilter, end: e.target.value })}
+                className="w-full sm:w-40 pl-9 pr-3 py-2 bg-gray-50 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-medium text-gray-700"
+              />
+            </div>
+          </div>
+          <button
+            onClick={() => setShowExportModal(true)}
+            className="w-full sm:w-auto px-5 py-2 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-all shadow-lg shadow-gray-200 flex items-center justify-center space-x-2 font-medium"
+          >
+            <Download className="w-4 h-4" />
+            <span>Export</span>
+          </button>
+        </div>
       </div>
 
       {/* Stats Grid */}
@@ -560,6 +698,85 @@ export default function MedicineAnalyticsPage() {
               />
             </LineChart>
           </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Smart Intelligence Section */}
+      <h2 className="text-xl font-bold text-gray-900 mt-8 mb-4">Smart Intelligence</h2>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        {/* 1. Critical Forecasts */}
+        <div className="bg-red-50 border border-red-100 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-red-100 rounded-lg"><AlertTriangle className="w-5 h-5 text-red-600" /></div>
+            <h3 className="font-bold text-gray-900">Critical Stockouts</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">Items predicted to run out within 7 days based on current sales rate.</p>
+          <div className="space-y-3">
+            {smartInsights.critical.length === 0 ? <p className="text-sm text-gray-400">No critical items to report.</p> :
+              smartInsights.critical.slice(0, 5).map((m: any, i: number) => (
+                <div key={i} className="flex justify-between items-center bg-white p-2 rounded shadow-sm border border-red-100">
+                  <span className="text-sm font-medium truncate w-32 text-gray-800">{m.name}</span>
+                  <span className="text-xs font-bold text-red-600">{m.daysRemaining === 999 ? '>1yr' : Math.round(m.daysRemaining) + ' days'} left</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* 2. Reorder Recommendations */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-blue-100 rounded-lg"><Package className="w-5 h-5 text-blue-600" /></div>
+            <h3 className="font-bold text-gray-900">Suggested Reorders</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">Recommended usage to cover next 30 days.</p>
+          <div className="space-y-3">
+            {reorderSuggestions.length === 0 ? <p className="text-sm text-gray-400">Inventory indicates sufficient stock levels.</p> :
+              reorderSuggestions.slice(0, 5).map((m: any, i: number) => (
+                <div key={i} className="flex justify-between items-center bg-white p-2 rounded shadow-sm border border-blue-100">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium truncate w-32 text-gray-800">{m.name}</span>
+                    <span className="text-[10px] text-gray-500">In Stock: {m.quantity_in_stock}</span>
+                  </div>
+                  <span className="text-xs font-bold text-blue-600 bg-blue-100 px-2 py-1 rounded">+{m.suggestedReorder} units</span>
+                </div>
+              ))
+            }
+          </div>
+        </div>
+
+        {/* 3. ABC Snapshot */}
+        <div className="bg-purple-50 border border-purple-100 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-2">
+            <div className="p-2 bg-purple-100 rounded-lg"><TrendingUp className="w-5 h-5 text-purple-600" /></div>
+            <h3 className="font-bold text-gray-900">ABC Analysis</h3>
+          </div>
+          <p className="text-sm text-gray-600 mb-4">Revenue Concentration (80/20 Rule)</p>
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Class A (Top 70% Rev)</span>
+              <span className="font-bold text-purple-700">{abcData.a.length} Items</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-purple-600 h-2 rounded-full" style={{ width: '70%' }}></div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Class B (Next 20%)</span>
+              <span className="font-bold text-purple-700">{abcData.b.length} Items</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-purple-400 h-2 rounded-full" style={{ width: '20%' }}></div>
+            </div>
+
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-gray-700">Class C (Low Value)</span>
+              <span className="font-bold text-purple-700">{abcData.c.length} Items</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div className="bg-purple-200 h-2 rounded-full" style={{ width: '10%' }}></div>
+            </div>
+          </div>
         </div>
       </div>
 

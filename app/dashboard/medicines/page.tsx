@@ -31,6 +31,7 @@ import MedicineFormModal from '@/components/MedicineFormModal';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 interface Medicine {
   id: number;
@@ -650,73 +651,11 @@ export default function MedicinesPage() {
           <h1 className="text-3xl font-bold text-gray-900">Medicines</h1>
           <p className="text-gray-600 mt-1">Manage your medicine inventory</p>
         </div>
-        {userIsAdmin && (
-          <button
-            onClick={() => setShowAddModal(true)}
-            className="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center space-x-2"
-          >
-            <Plus className="w-5 h-5" />
-            <span>Add Medicine</span>
-          </button>
-        )}
+
       </div>
 
       {/* Summary Dashboard */}
-      {summaryStats && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Total Inventory Value</p>
-                <h3 className="text-2xl font-bold text-gray-900">TZS {summaryStats.total_stock_value?.toLocaleString()}</h3>
-                <p className="text-xs text-green-600 mt-1">Cost Valuation</p>
-              </div>
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <div className="w-6 h-6 text-blue-600 font-bold flex items-center justify-center">ToS</div>
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Projected Revenue</p>
-                <h3 className="text-2xl font-bold text-gray-900">TZS {summaryStats.total_selling_value?.toLocaleString()}</h3>
-                <p className="text-xs text-blue-600 mt-1">If all stock sold</p>
-              </div>
-              <div className="p-3 bg-green-50 rounded-lg">
-                <TrendingUp className="w-6 h-6 text-green-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Total Sold (Filtered)</p>
-                <h3 className="text-2xl font-bold text-gray-900">{summaryStats.total_sold_qty?.toLocaleString()}</h3>
-                <p className="text-xs text-purple-600 mt-1">Units Sold</p>
-              </div>
-              <div className="p-3 bg-purple-50 rounded-lg">
-                <Upload className="w-6 h-6 text-purple-600" />
-              </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
-            <div className="flex justify-between items-start">
-              <div>
-                <p className="text-sm text-gray-500 mb-1">Sales Value</p>
-                <h3 className="text-2xl font-bold text-gray-900">TZS {summaryStats.total_sold_value?.toLocaleString()}</h3>
-                <p className="text-xs text-indigo-600 mt-1">Total Revenue</p>
-              </div>
-              <div className="p-3 bg-indigo-50 rounded-lg">
-                <FileText className="w-6 h-6 text-indigo-600" />
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Summary Stats Removed as per request */}
 
       {/* Filters & Toolbar */}
       <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100">
@@ -791,13 +730,15 @@ export default function MedicinesPage() {
 
             <div className="h-8 w-[1px] bg-gray-300 mx-1 hidden sm:block"></div>
 
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-sm font-medium whitespace-nowrap"
-            >
-              <Plus className="w-5 h-5" />
-              <span>Add Medicine</span>
-            </button>
+            {userIsAdmin && (
+              <button
+                onClick={() => setShowAddModal(true)}
+                className="px-4 py-2.5 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2 shadow-sm font-medium whitespace-nowrap"
+              >
+                <Plus className="w-5 h-5" />
+                <span>Add Medicine</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -805,77 +746,34 @@ export default function MedicinesPage() {
       {/* Medicines Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  {[...Array(7)].map((_, i) => (
-                    <th key={i} className="text-left py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...Array(10)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-40 animate-pulse"></div>
-                        <div className="h-3 bg-gray-100 rounded w-24 animate-pulse"></div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="flex space-x-2">
-                        <div className="h-8 w-8 bg-gray-100 rounded animate-pulse"></div>
-                        <div className="h-8 w-8 bg-gray-100 rounded animate-pulse"></div>
-                        <div className="h-8 w-8 bg-gray-100 rounded animate-pulse"></div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TableSkeleton columns={7} rows={10} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="w-full min-w-[1000px] text-sm text-left border-collapse border border-gray-300">
+              <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
+                    S/N
+                  </th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Medicine Name
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Category
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Stock
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Price
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Expiry Date
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Status
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -883,7 +781,7 @@ export default function MedicinesPage() {
               <tbody>
                 {medicines.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="text-center py-12 text-gray-500">
+                    <td colSpan={8} className="text-center py-12 text-gray-500 border border-gray-300">
                       <AlertCircle className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                       <p>No medicines found</p>
                     </td>
@@ -895,12 +793,15 @@ export default function MedicinesPage() {
                       (currentPage - 1) * itemsPerPage,
                       currentPage * itemsPerPage
                     );
-                    return paginatedMedicines.map((medicine) => (
+                    return paginatedMedicines.map((medicine, idx) => (
                       <tr
                         key={medicine.id}
-                        className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                        className="even:bg-gray-50 hover:bg-blue-50 transition-colors"
                       >
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">
+                          {(currentPage - 1) * itemsPerPage + idx + 1}
+                        </td>
+                        <td className="py-3 px-4 border border-gray-300">
                           <div>
                             <div className="font-medium text-gray-900">
                               {medicine.name}
@@ -910,28 +811,28 @@ export default function MedicinesPage() {
                             </div>
                           </div>
                         </td>
-                        <td className="py-4 px-6 text-gray-700">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">
                           {medicine.category_name}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 border border-gray-300">
                           <span className="font-medium text-gray-900">
                             {medicine.quantity_in_stock}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-gray-700">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">
                           TZS {medicine.selling_price_full?.toLocaleString()}
                         </td>
-                        <td className="py-4 px-6 text-gray-700">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">
                           {new Date(medicine.expiry_date).toLocaleDateString()}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 border border-gray-300">
                           {getStatusBadge(medicine.stock_status)}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 border border-gray-300">
                           <div className="flex items-center space-x-2">
                             <button
                               onClick={() => handleView(medicine)}
-                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
@@ -940,14 +841,14 @@ export default function MedicinesPage() {
                               <>
                                 <button
                                   onClick={() => handleEdit(medicine)}
-                                  className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                                  className="p-2 text-green-600 hover:bg-green-100 rounded-lg transition-colors"
                                   title="Edit Medicine"
                                 >
                                   <Edit2 className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => handleDelete(medicine.id)}
-                                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                  className="p-2 text-red-600 hover:bg-red-100 rounded-lg transition-colors"
                                   title="Delete Medicine"
                                 >
                                   <Trash2 className="w-4 h-4" />

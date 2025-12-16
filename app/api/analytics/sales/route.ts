@@ -6,53 +6,86 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const startDate = searchParams.get('startDate');
     const endDate = searchParams.get('endDate');
+    const customerSearch = searchParams.get('customer');
+    const medicine = searchParams.get('medicine');
 
     // Total sales and revenue
-    let salesQuery = `
-      SELECT
-        COUNT(*) as total_sales,
-        SUM(total_amount) as total_revenue,
-        SUM(amount_paid - total_amount) as total_change,
-        AVG(total_amount) as average_sale
-      FROM sales
-      WHERE status = 'completed'
-    `;
+    let salesQuery = '';
+    const salesParams: any[] = [];
 
-    const params: any[] = [];
+    if (medicine) {
+      // PER MEDICINE STATS
+      // Note: We use COUNT(DISTINCT s.id) for total_sales (count of transactions involving this medicine)
+      salesQuery = `
+        SELECT
+          COUNT(DISTINCT s.id) as total_sales,
+          SUM(si.total_price) as total_revenue,
+          0 as total_change, -- Not applicable for single item
+          AVG(si.total_price) as average_sale
+        FROM sales s
+        JOIN sale_items si ON s.id = si.sale_id
+        WHERE s.status = 'completed' AND si.medicine_name LIKE ?
+      `;
+      salesParams.push(`%${medicine}%`);
+    } else {
+      // GLOBAL STATS
+      salesQuery = `
+        SELECT
+          COUNT(*) as total_sales,
+          SUM(total_amount) as total_revenue,
+          SUM(amount_paid - total_amount) as total_change,
+          AVG(total_amount) as average_sale
+        FROM sales s
+        WHERE status = 'completed'
+      `;
+    }
 
     if (startDate) {
-      salesQuery += ` AND date(sale_date) >= ?`;
-      params.push(startDate);
+      salesQuery += ` AND date(s.sale_date) >= ?`;
+      salesParams.push(startDate);
     }
 
     if (endDate) {
-      salesQuery += ` AND date(sale_date) <= ?`;
-      params.push(endDate);
+      salesQuery += ` AND date(s.sale_date) <= ?`;
+      salesParams.push(endDate);
     }
 
-    const salesStats: any = query(salesQuery, params);
+    const salesStats: any = query(salesQuery, salesParams);
 
     // Profit calculation
-    let profitQuery = `
-      SELECT
-        SUM(si.profit) as total_profit
-      FROM sale_items si
-      JOIN sales s ON si.sale_id = s.id
-      WHERE s.status = 'completed'
-    `;
+    let profitQuery = '';
+    const profitParams: any[] = [];
 
-    if (startDate || endDate) {
-      profitQuery += ' AND';
-      if (startDate) {
-        profitQuery += ` date(s.sale_date) >= '${startDate}'`;
-        if (endDate) profitQuery += ' AND';
-      }
-      if (endDate) {
-        profitQuery += ` date(s.sale_date) <= '${endDate}'`;
-      }
+    if (medicine) {
+      profitQuery = `
+        SELECT
+          SUM(si.profit) as total_profit
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        WHERE s.status = 'completed' AND si.medicine_name LIKE ?
+      `;
+      profitParams.push(`%${medicine}%`);
+    } else {
+      profitQuery = `
+        SELECT
+          SUM(si.profit) as total_profit
+        FROM sale_items si
+        JOIN sales s ON si.sale_id = s.id
+        WHERE s.status = 'completed'
+      `;
     }
 
-    const profitStats: any = query(profitQuery);
+    if (startDate) {
+      profitQuery += ` AND date(s.sale_date) >= ?`;
+      profitParams.push(startDate);
+    }
+
+    if (endDate) {
+      profitQuery += ` AND date(s.sale_date) <= ?`;
+      profitParams.push(endDate);
+    }
+
+    const profitStats: any = query(profitQuery, profitParams);
 
     // Daily sales trend
     let dailyTrendQuery = `
@@ -64,17 +97,21 @@ export async function GET(request: NextRequest) {
       WHERE status = 'completed'
     `;
 
+    const dailyTrendParams: any[] = [];
+
     if (startDate) {
       dailyTrendQuery += ` AND date(sale_date) >= ?`;
+      dailyTrendParams.push(startDate);
     }
 
     if (endDate) {
       dailyTrendQuery += ` AND date(sale_date) <= ?`;
+      dailyTrendParams.push(endDate);
     }
 
     dailyTrendQuery += ` GROUP BY date(sale_date) ORDER BY date DESC LIMIT 30`;
 
-    const dailyTrend = query(dailyTrendQuery, params);
+    const dailyTrend = query(dailyTrendQuery, dailyTrendParams);
 
     // Top selling medicines
     let topMedicinesQuery = `
@@ -161,9 +198,11 @@ export async function GET(request: NextRequest) {
     // Detailed All Sales Report
     let detailedSalesQuery = `
       SELECT
+        s.id as sale_id,
         s.sale_date,
         s.invoice_number,
         s.customer_name,
+        s.payment_method,
         si.medicine_name,
         si.quantity,
         si.total_price as item_total,
@@ -181,15 +220,13 @@ export async function GET(request: NextRequest) {
       WHERE s.status = 'completed'
     `;
 
-    if (startDate || endDate) {
+    if (startDate || endDate || medicine) {
       detailedSalesQuery += ' AND';
-      if (startDate) {
-        detailedSalesQuery += ` date(s.sale_date) >= '${startDate}'`;
-        if (endDate) detailedSalesQuery += ' AND';
-      }
-      if (endDate) {
-        detailedSalesQuery += ` date(s.sale_date) <= '${endDate}'`;
-      }
+      const conditions = [];
+      if (startDate) conditions.push(`date(s.sale_date) >= '${startDate}'`);
+      if (endDate) conditions.push(`date(s.sale_date) <= '${endDate}'`);
+      if (medicine) conditions.push(`si.medicine_name LIKE '%${medicine}%'`);
+      detailedSalesQuery += ' ' + conditions.join(' AND ');
     }
 
     detailedSalesQuery += ` ORDER BY s.sale_date DESC`;

@@ -2,7 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Database, Download, RotateCcw, AlertTriangle, FileText, Loader2, HardDrive, ShieldAlert, Trash2, Eye, X } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 import Swal from 'sweetalert2';
+import { isAdmin } from '@/lib/auth';
+import { useRouter } from 'next/navigation';
 
 interface Backup {
     name: string;
@@ -12,19 +16,37 @@ interface Backup {
 }
 
 export default function BackupPage() {
+    const router = useRouter();
     const [backups, setBackups] = useState<Backup[]>([]);
     const [loading, setLoading] = useState(true);
     const [creating, setCreating] = useState(false);
     const [restoring, setRestoring] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
-    const [itemsPerPage] = useState(5);
-    const [previewData, setPreviewData] = useState<any>(null);
-    const [showPreview, setShowPreview] = useState(false);
-    const [previewLoading, setPreviewLoading] = useState(false);
+    const [userIsAdmin, setUserIsAdmin] = useState(false);
+    // ... states ...
 
     useEffect(() => {
-        fetchBackups();
+        const checkAccess = async () => {
+            const admin = await isAdmin();
+            if (!admin) {
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Access Denied',
+                    text: 'Only administrators can access backups.',
+                    timer: 2000,
+                    showConfirmButton: false
+                });
+                router.push('/dashboard');
+                return;
+            }
+            setUserIsAdmin(true);
+            fetchBackups();
+        };
+        checkAccess();
     }, []);
+
+    if (!userIsAdmin && loading) return <div className="p-8"><Skeleton className="h-96 w-full" /></div>;
+    if (!userIsAdmin) return null; // Or access denied component
+
 
     const fetchBackups = async () => {
         try {
@@ -228,7 +250,7 @@ export default function BackupPage() {
                         <Database className="w-8 h-8 text-blue-600" />
                         System Backup & Restore
                     </h1>
-                    <p className="text-gray-600 mt-1">Manage database backups and restore points</p>
+                    <p className="text-gray-600 mt-1">Manage Backups</p>
                 </div>
                 <button
                     onClick={handleCreateBackup}
@@ -331,9 +353,7 @@ export default function BackupPage() {
                 </div>
 
                 {loading ? (
-                    <div className="p-12 flex justify-center text-gray-500">
-                        <Loader2 className="w-8 h-8 animate-spin" />
-                    </div>
+                    <TableSkeleton columns={5} rows={3} />
                 ) : manualBackups.length === 0 ? (
                     <div className="p-12 text-center text-gray-500">
                         <FileText className="w-12 h-12 mx-auto mb-4 text-gray-300" />
@@ -342,20 +362,20 @@ export default function BackupPage() {
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left">
-                            <thead className="bg-gray-50 text-gray-600 text-sm font-semibold border-b border-gray-200">
+                        <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                            <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                                 <tr>
-                                    <th className="px-6 py-4">Backup Name</th>
-                                    <th className="px-6 py-4">Location</th>
-                                    <th className="px-6 py-4">Date Created</th>
-                                    <th className="px-6 py-4">Size</th>
-                                    <th className="px-6 py-4 text-right">Actions</th>
+                                    <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Backup Name</th>
+                                    <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Location</th>
+                                    <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Date Created</th>
+                                    <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Size</th>
+                                    <th className="py-3 px-4 border border-gray-300 whitespace-nowrap text-right">Actions</th>
                                 </tr>
                             </thead>
-                            <tbody className="divide-y divide-gray-100">
+                            <tbody>
                                 {currentBackups.map((backup, index) => (
-                                    <tr key={index} className="hover:bg-gray-50 transition-colors">
-                                        <td className="px-6 py-4">
+                                    <tr key={index} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                                        <td className="py-3 px-4 border border-gray-300">
                                             <div className="flex items-center gap-3">
                                                 <div className="p-2 bg-gray-100 rounded-lg">
                                                     <Database className="w-4 h-4 text-gray-600" />
@@ -363,16 +383,16 @@ export default function BackupPage() {
                                                 <span className="font-medium text-gray-900">{backup.name}</span>
                                             </div>
                                         </td>
-                                        <td className="px-6 py-4 text-gray-500 text-xs font-mono max-w-[200px] truncate" title={backup.path}>
+                                        <td className="py-3 px-4 border border-gray-300 text-gray-500 font-mono text-xs max-w-[200px] truncate" title={backup.path}>
                                             {backup.path}
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600">
+                                        <td className="py-3 px-4 text-gray-700 border border-gray-300">
                                             {formatDate(backup.created)}
                                         </td>
-                                        <td className="px-6 py-4 text-gray-600 font-mono text-sm">
+                                        <td className="py-3 px-4 text-gray-600 font-mono border border-gray-300">
                                             {formatSize(backup.size)}
                                         </td>
-                                        <td className="px-6 py-4 text-right">
+                                        <td className="py-3 px-4 text-right border border-gray-300">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
                                                     onClick={() => handleView(backup.name)}

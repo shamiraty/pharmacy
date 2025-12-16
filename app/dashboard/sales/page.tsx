@@ -11,6 +11,7 @@ import {
   Printer,
   Download,
 } from 'lucide-react';
+import { Skeleton } from '@/components/ui/Skeleton';
 import Swal from 'sweetalert2';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -655,27 +656,27 @@ export default function SalesPage() {
                 [...Array(6)].map((_, i) => (
                   <div
                     key={i}
-                    className="animate-pulse bg-white rounded-xl p-5 border border-gray-100 shadow-sm"
+                    className="bg-white rounded-xl p-5 border border-gray-100 shadow-sm"
                   >
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="h-6 bg-gray-200 rounded w-2/3 mb-2"></div>
-                        <div className="h-4 bg-gray-100 rounded w-1/3"></div>
+                        <Skeleton className="h-6 w-2/3 mb-2" />
+                        <Skeleton className="h-4 w-1/3" />
                       </div>
                       <div className="ml-3">
-                        <div className="h-6 w-16 bg-gray-100 rounded"></div>
+                        <Skeleton className="h-6 w-16" />
                       </div>
                     </div>
 
                     <div className="flex items-center gap-2 mb-4">
-                      <div className="w-1 h-1 rounded-full bg-gray-300"></div>
-                      <div className="h-4 bg-gray-100 rounded w-3/4"></div>
+                      <Skeleton className="w-1 h-1 rounded-full" />
+                      <Skeleton className="h-4 w-3/4" />
                     </div>
 
                     <div className="grid grid-cols-3 gap-2 mt-auto">
-                      <div className="h-12 bg-gray-100 rounded-lg"></div>
-                      <div className="h-12 bg-gray-50 rounded-lg border border-gray-100"></div>
-                      <div className="h-12 bg-gray-50 rounded-lg border border-gray-100"></div>
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
+                      <Skeleton className="h-12 rounded-lg" />
                     </div>
                   </div>
                 ))
@@ -952,13 +953,14 @@ export default function SalesPage() {
           <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4 backdrop-blur-sm">
             <div className="bg-white rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[90vh]">
               {/* Modal Header */}
-              <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50 rounded-t-2xl">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-primary-600 flex justify-between items-center bg-gradient-to-b from-primary-700 to-primary-800 rounded-t-2xl">
                 <div>
-                  <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                    <span className="bg-green-100 text-green-700 p-1.5 rounded-full"><Printer className="w-5 h-5" /></span>
+                  <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                    <span className="bg-white/20 text-white p-1.5 rounded-full"><Printer className="w-5 h-5" /></span>
                     Sale Completed
                   </h2>
-                  <p className="text-sm text-gray-500 mt-1">Invoice #{completedSale.invoiceNumber}</p>
+                  <p className="text-sm text-primary-100 mt-1">Invoice #{completedSale.invoiceNumber}</p>
                 </div>
                 <button
                   onClick={() => {
@@ -969,7 +971,7 @@ export default function SalesPage() {
                     setAmountPaid('');
                     fetchMedicines();
                   }}
-                  className="text-gray-400 hover:text-gray-600 transition-colors p-1"
+                  className="text-primary-100 hover:text-white hover:bg-white/20 transition-colors p-2 rounded-lg"
                 >
                   <X className="w-6 h-6" />
                 </button>
@@ -1004,8 +1006,8 @@ export default function SalesPage() {
                   </div>
 
                   {/* Table */}
-                  <div className="mb-8">
-                    <table className="w-full text-sm">
+                  <div className="mb-8 overflow-x-auto">
+                    <table className="w-full text-sm min-w-[600px]">
                       <thead>
                         <tr className="border-b-2 border-gray-800 text-gray-900">
                           <th className="py-2 text-left">Medicine</th>

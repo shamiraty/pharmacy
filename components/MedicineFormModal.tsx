@@ -60,8 +60,8 @@ export default function MedicineFormModal({
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         {/* Header with Steps */}
-        <div className="sticky top-0 bg-gradient-to-b from-primary-700 to-primary-800 text-white px-6 py-4 rounded-t-xl z-10">
-          <div className="flex items-center justify-between mb-4">
+        <div className="sticky top-0 bg-gradient-to-b from-primary-700 to-primary-800 text-white px-6 py-4 rounded-t-xl z-20 shadow-md">
+          <div className="flex items-center justify-between mb-6">
             <h2 className="text-2xl font-bold">
               {mode === 'add' ? 'Add New Medicine' : 'Edit Medicine'}
             </h2>
@@ -74,33 +74,33 @@ export default function MedicineFormModal({
           </div>
 
           {/* Step Indicator */}
-          <div className="flex items-center justify-between">
+          <div className="relative flex justify-between">
+            {/* Connecting Line */}
+            <div className="absolute top-5 left-0 w-full h-1 bg-white/20 -z-0 rounded"></div>
+            <div
+              className="absolute top-5 left-0 h-1 bg-green-400 -z-0 rounded transition-all duration-300"
+              style={{ width: `${((currentStep - 1) / (totalSteps - 1)) * 100}%` }}
+            ></div>
+
             {[1, 2, 3, 4].map((step) => (
-              <div key={step} className="flex items-center flex-1">
-                <div className="flex flex-col items-center flex-1">
-                  <div
-                    className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all ${currentStep > step
-                        ? 'bg-green-500 text-white'
-                        : currentStep === step
-                          ? 'bg-white text-primary-600 ring-4 ring-white/30'
-                          : 'bg-white/30 text-white/60'
-                      }`}
-                  >
-                    {currentStep > step ? <Check className="w-5 h-5" /> : step}
-                  </div>
-                  <span className="text-xs mt-2 font-medium text-center">
-                    {step === 1 && 'Basic Info'}
-                    {step === 2 && 'Pricing'}
-                    {step === 3 && 'Stock & Medical'}
-                    {step === 4 && 'Additional'}
-                  </span>
+              <div key={step} className="flex flex-col items-center z-10 w-24">
+                <div
+                  className={`w-10 h-10 rounded-full flex items-center justify-center font-bold transition-all duration-300 border-2 ${currentStep > step
+                      ? 'bg-green-500 border-green-500 text-white'
+                      : currentStep === step
+                        ? 'bg-white border-white text-primary-700 shadow-lg scale-110'
+                        : 'bg-primary-900/50 border-white/30 text-white/50 backdrop-blur-sm'
+                    }`}
+                >
+                  {currentStep > step ? <Check className="w-6 h-6" /> : step}
                 </div>
-                {step < 4 && (
-                  <div
-                    className={`h-1 flex-1 mx-2 rounded transition-all ${currentStep > step ? 'bg-green-500' : 'bg-white/30'
-                      }`}
-                  />
-                )}
+                <div className={`mt-2 text-xs font-semibold text-center transition-opacity duration-300 ${currentStep === step ? 'opacity-100 text-white' : 'opacity-70 text-blue-100 hidden md:block'
+                  }`}>
+                  {step === 1 && 'Basic Info'}
+                  {step === 2 && 'Pricing'}
+                  {step === 3 && 'Stock/Medical'}
+                  {step === 4 && 'Additional'}
+                </div>
               </div>
             ))}
           </div>

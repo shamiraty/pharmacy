@@ -35,6 +35,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Pagination from '@/components/Pagination';
+import { Skeleton } from '@/components/ui/Skeleton';
 
 type DateFilterType = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'prev_month' | 'this_year' | 'jan_mar' | 'apr_jun' | 'jul_sep' | 'oct_dec' | 'jan_jun' | 'jul_dec';
 
@@ -56,11 +57,15 @@ export default function SalesAnalyticsPage() {
   const [itemsPage, setItemsPage] = useState(1);
   const [topMedPage, setTopMedPage] = useState(1);
   const [activeFilter, setActiveFilter] = useState<DateFilterType | 'custom'>('custom');
-  const [isExporting, setIsExporting] = useState(false);
+  const [exportingId, setExportingId] = useState<string | null>(null);
+  const [selectedHour, setSelectedHour] = useState<number | null>(null);
+  const [showHourlyModal, setShowHourlyModal] = useState(false);
+  const [filterType, setFilterType] = useState<'all' | 'date' | 'payment'>('all');
+  const [filterValue, setFilterValue] = useState('');
   const itemsPerPage = 15;
 
-  const handleExport = async (exportFn: () => void) => {
-    setIsExporting(true);
+  const handleExport = async (exportFn: () => void, id: string) => {
+    setExportingId(id);
     // Simulate a small delay for visual feedback since export is sync
     await new Promise(resolve => setTimeout(resolve, 800));
     try {
@@ -69,7 +74,7 @@ export default function SalesAnalyticsPage() {
       console.error('Export failed:', error);
       Swal.fire('Error', 'Export failed', 'error');
     } finally {
-      setIsExporting(false);
+      setExportingId(null);
     }
   };
 
@@ -511,8 +516,22 @@ export default function SalesAnalyticsPage() {
   // Derived Data & New Modal Exports
   const getTransactions = () => {
     if (!analytics?.detailedSales) return [];
+
+    let filteredSales = analytics.detailedSales;
+
+    // Apply active chart filters
+    if (filterType === 'date' && filterValue) {
+      filteredSales = filteredSales.filter((sale: any) =>
+        new Date(sale.sale_date).toDateString() === new Date(filterValue).toDateString()
+      );
+    } else if (filterType === 'payment' && filterValue) {
+      filteredSales = filteredSales.filter((sale: any) =>
+        sale.payment_method === filterValue
+      );
+    }
+
     const seen = new Set();
-    return analytics.detailedSales.filter((sale: any) => {
+    return filteredSales.filter((sale: any) => {
       const duplicate = seen.has(sale.invoice_number);
       seen.add(sale.invoice_number);
       return !duplicate;
@@ -717,25 +736,25 @@ export default function SalesAnalyticsPage() {
         {/* Header Skeleton */}
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <div className="h-8 bg-gray-200 rounded w-64 animate-pulse"></div>
-            <div className="h-4 bg-gray-200 rounded w-48 animate-pulse"></div>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-48" />
           </div>
           <div className="flex gap-2">
-            <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
-            <div className="h-10 w-24 bg-gray-200 rounded-lg animate-pulse"></div>
+            <Skeleton className="h-10 w-24 rounded-lg" />
+            <Skeleton className="h-10 w-24 rounded-lg" />
           </div>
         </div>
 
         {/* Stats Grid Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse">
+            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
               <div className="flex justify-between items-start">
                 <div className="space-y-2 flex-1">
-                  <div className="h-4 bg-gray-200 rounded w-24"></div>
-                  <div className="h-8 bg-gray-200 rounded w-32"></div>
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-8 w-32" />
                 </div>
-                <div className="w-12 h-12 bg-gray-200 rounded-lg"></div>
+                <Skeleton className="w-12 h-12 rounded-lg" />
               </div>
             </div>
           ))}
@@ -743,14 +762,18 @@ export default function SalesAnalyticsPage() {
 
         {/* Charts Section Skeleton */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[350px] animate-pulse"></div>
-          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[350px] animate-pulse"></div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[350px]">
+            <Skeleton className="w-full h-full rounded-xl" />
+          </div>
+          <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-[350px]">
+            <Skeleton className="w-full h-full rounded-xl" />
+          </div>
         </div>
 
         {/* Report Buttons Skeleton */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 animate-pulse h-32"></div>
+            <Skeleton key={i} className="bg-white rounded-xl p-6 shadow-sm border border-gray-100 h-32" />
           ))}
         </div>
       </div>
@@ -821,51 +844,64 @@ export default function SalesAnalyticsPage() {
           {/* Detailed Reports Section Buttons */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 col-span-full mt-6">
             <button
-              onClick={() => setShowTransactionsModal(true)}
-              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group"
+              onClick={() => {
+                setFilterType('all');
+                setFilterValue('');
+                setShowTransactionsModal(true);
+              }}
+              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group relative hover:border-blue-500 cursor-pointer"
             >
+              <div className="absolute top-4 right-4 text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-click"><path d="M14 4.1 12 6" /><path d="m5.1 8-2.9-.8" /><path d="m6 12-1.9 2" /><path d="M7.2 2.2 8 5.1" /><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1 .007.922l-4.225 1.56a1.218 1.218 0 0 0-.743.743l-1.56 4.225a.5.5 0 0 1-.922.007l-4.5-11z" /></svg>
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <div className="p-3 bg-blue-50 rounded-lg group-hover:bg-blue-100 transition-colors">
                   <FileText className="w-6 h-6 text-blue-600" />
                 </div>
                 <TrendingUp className="w-5 h-5 text-gray-400 group-hover:text-blue-600" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Transactions Report</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                View invoice-level details: Payments, Change, Customers
-              </p>
+              <h3 className="text-lg font-bold text-gray-900 group-hover:text-blue-600 transition-colors">Transactions Report</h3>
+              <div className="mt-4 flex items-center text-blue-600 font-medium text-sm">
+                View Details <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-right ml-1"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+              </div>
             </button>
 
             <button
               onClick={() => setShowItemsModal(true)}
-              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group"
+              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group relative hover:border-green-500 cursor-pointer"
             >
+              <div className="absolute top-4 right-4 text-green-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-click"><path d="M14 4.1 12 6" /><path d="m5.1 8-2.9-.8" /><path d="m6 12-1.9 2" /><path d="M7.2 2.2 8 5.1" /><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1 .007.922l-4.225 1.56a1.218 1.218 0 0 0-.743.743l-1.56 4.225a.5.5 0 0 1-.922.007l-4.5-11z" /></svg>
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <div className="p-3 bg-green-50 rounded-lg group-hover:bg-green-100 transition-colors">
                   <ShoppingCart className="w-6 h-6 text-green-600" />
                 </div>
                 <TrendingUp className="w-5 h-5 text-gray-400 group-hover:text-green-600" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Sold Items Report</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                View product-level details: Quantities, Stock Impact, Item Totals
-              </p>
+              <h3 className="text-lg font-bold text-gray-900 group-hover:text-green-600 transition-colors">Sold Items Report</h3>
+              <div className="mt-4 flex items-center text-green-600 font-medium text-sm">
+                View Details <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-right ml-1"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+              </div>
             </button>
 
             <button
               onClick={() => setShowTopMedicinesModal(true)}
-              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group"
+              className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all text-left group relative hover:border-purple-500 cursor-pointer"
             >
+              <div className="absolute top-4 right-4 text-purple-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-click"><path d="M14 4.1 12 6" /><path d="m5.1 8-2.9-.8" /><path d="m6 12-1.9 2" /><path d="M7.2 2.2 8 5.1" /><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1 .007.922l-4.225 1.56a1.218 1.218 0 0 0-.743.743l-1.56 4.225a.5.5 0 0 1-.922.007l-4.5-11z" /></svg>
+              </div>
               <div className="flex items-center justify-between mb-2">
                 <div className="p-3 bg-purple-50 rounded-lg group-hover:bg-purple-100 transition-colors">
                   <TrendingUp className="w-6 h-6 text-purple-600" />
                 </div>
                 <TrendingUp className="w-5 h-5 text-gray-400 group-hover:text-purple-600" />
               </div>
-              <h3 className="text-lg font-bold text-gray-900">Top Medicines Report</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                View best selling products, profitability and frequency
-              </p>
+              <h3 className="text-lg font-bold text-gray-900 group-hover:text-purple-600 transition-colors">Top Medicines Report</h3>
+              <div className="mt-4 flex items-center text-purple-600 font-medium text-sm">
+                View Details <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-arrow-right ml-1"><path d="M5 12h14" /><path d="m12 5 7 7-7 7" /></svg>
+              </div>
             </button>
           </div>
 
@@ -879,6 +915,14 @@ export default function SalesAnalyticsPage() {
               <ResponsiveContainer width="100%" height={300}>
                 <AreaChart
                   data={analytics.dailyTrend?.slice().reverse() || []}
+                  onClick={(data: any) => {
+                    if (data && data.activePayload && data.activePayload.length > 0) {
+                      setFilterType('date');
+                      setFilterValue(data.activePayload[0].payload.date);
+                      setShowTransactionsModal(true);
+                    }
+                  }}
+                  className="cursor-pointer"
                 >
                   <defs>
                     <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
@@ -908,6 +952,7 @@ export default function SalesAnalyticsPage() {
                       border: '1px solid #e5e7eb',
                       borderRadius: '8px',
                     }}
+                    cursor={{ stroke: '#0ea5e9', strokeWidth: 1 }}
                   />
                   <Area
                     type="monotone"
@@ -916,9 +961,11 @@ export default function SalesAnalyticsPage() {
                     strokeWidth={2}
                     fillOpacity={1}
                     fill="url(#colorRevenue)"
+                    cursor="pointer"
                   />
                 </AreaChart>
               </ResponsiveContainer>
+              <p className="text-xs text-center text-gray-500 mt-2">Click on a point to view transactions for that date</p>
             </div>
 
             {/* Payment Methods */}
@@ -939,24 +986,43 @@ export default function SalesAnalyticsPage() {
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="count"
+                    onClick={(data: any) => {
+                      // Pie chart click returns the data object directly usually or event
+                      if (data && data.payment_method) {
+                        setFilterType('payment');
+                        setFilterValue(data.payment_method);
+                        setShowTransactionsModal(true);
+                      }
+                    }}
+                    cursor="pointer"
                   >
                     {(analytics.paymentMethods || []).map((_: any, index: number) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} cursor="pointer" />
                     ))}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
+              <p className="text-xs text-center text-gray-500 mt-2">Click on a segment to view transactions</p>
             </div>
 
             {/* Hourly Sales Pattern */}
             {analytics.hourlySales && analytics.hourlySales.length > 0 && (
               <div className="bg-white rounded-xl p-6 shadow-sm border border-gray-100">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  Sales by Hour
+                  Sales by Hour <span className="text-sm font-normal text-gray-500">({new Date(startDate).toLocaleDateString()} - {new Date(endDate).toLocaleDateString()})</span>
                 </h3>
                 <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={analytics.hourlySales}>
+                  <BarChart
+                    data={analytics.hourlySales}
+                    onClick={(data: any) => {
+                      if (data && data.activePayload && data.activePayload.length > 0) {
+                        setSelectedHour(data.activePayload[0].payload.hour);
+                        setShowHourlyModal(true);
+                      }
+                    }}
+                    className="cursor-pointer"
+                  >
                     <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
                     <XAxis
                       dataKey="hour"
@@ -971,10 +1037,15 @@ export default function SalesAnalyticsPage() {
                         border: '1px solid #e5e7eb',
                         borderRadius: '8px',
                       }}
+                      cursor={{ fill: '#f1f5f9' }}
                     />
-                    <Bar dataKey="sales_count" fill="#0ea5e9" radius={[8, 8, 0, 0]} />
+                    <Bar dataKey="sales_count" fill="#0ea5e9" radius={[8, 8, 0, 0]} cursor="pointer" />
                   </BarChart>
                 </ResponsiveContainer>
+                <div className="flex items-center justify-center gap-2 mt-2 text-blue-600 bg-blue-50 py-1 px-3 rounded-full mx-auto w-fit">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-mouse-pointer-click"><path d="M14 4.1 12 6" /><path d="m5.1 8-2.9-.8" /><path d="m6 12-1.9 2" /><path d="M7.2 2.2 8 5.1" /><path d="M9.037 9.69a.498.498 0 0 1 .653-.653l11 4.5a.5.5 0 0 1 .007.922l-4.225 1.56a1.218 1.218 0 0 0-.743.743l-1.56 4.225a.5.5 0 0 1-.922.007l-4.5-11z" /></svg>
+                  <span className="text-xs font-semibold">Click bars to view details</span>
+                </div>
               </div>
             )}
           </div>
@@ -991,78 +1062,111 @@ export default function SalesAnalyticsPage() {
             showTransactionsModal && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-gray-50/50 rounded-t-2xl">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">Transactions Report</h2>
-                      <div className="flex gap-3 mt-2 text-sm font-medium">
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
-                          Count: {getTransactions().length}
-                        </span>
-                        <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100">
-                          Revenue: TZS {getTransactions().reduce((sum: number, t: any) => sum + (t.invoice_total || 0), 0).toLocaleString()}
-                        </span>
-                        <span className="bg-orange-50 text-orange-700 px-3 py-1 rounded-full border border-orange-100">
-                          Paid: TZS {getTransactions().reduce((sum: number, t: any) => sum + (t.amount_paid || 0), 0).toLocaleString()}
-                        </span>
+                  <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center bg-gray-50/50 rounded-t-2xl gap-6">
+                    <div className="w-full xl:w-auto">
+                      <h2 className="text-xl font-bold text-gray-900 mb-4">
+                        {filterType === 'date' ? `Transactions on ${new Date(filterValue).toLocaleDateString()}` :
+                          filterType === 'payment' ? `Transactions via ${filterValue}` :
+                            'Transactions Report'}
+                      </h2>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3 min-w-[200px]">
+                          <div className="p-2 bg-blue-50 rounded-lg">
+                            <FileText className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Count</p>
+                            <p className="text-sm font-bold text-gray-900">{getTransactions().length}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3 min-w-[200px]">
+                          <div className="p-2 bg-green-50 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Revenue</p>
+                            <p className="text-sm font-bold text-gray-900">TZS {getTransactions().reduce((sum: number, t: any) => sum + (t.invoice_total || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3 min-w-[200px]">
+                          <div className="p-2 bg-orange-50 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-orange-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Paid</p>
+                            <p className="text-sm font-bold text-gray-900">TZS {getTransactions().reduce((sum: number, t: any) => sum + (t.amount_paid || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex gap-2 w-full xl:w-auto">
                       <button
-                        onClick={() => handleExport(() => exportTransactions('excel'))}
-                        disabled={isExporting}
-                        className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportTransactions('excel'), 'trans-excel')}
+                        disabled={exportingId === 'trans-excel'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-green-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />} Excel
+                        {exportingId === 'trans-excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                        Excel
                       </button>
                       <button
-                        onClick={() => handleExport(() => exportTransactions('pdf'))}
-                        disabled={isExporting}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportTransactions('pdf'), 'trans-pdf')}
+                        disabled={exportingId === 'trans-pdf'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-red-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                        {exportingId === 'trans-pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        PDF
                       </button>
-                      <button onClick={() => setShowTransactionsModal(false)} className="px-3 py-2 hover:bg-gray-100 rounded-lg text-gray-500 text-sm font-medium">
+                      <button
+                        onClick={() => setShowTransactionsModal(false)}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm"
+                      >
                         Close
                       </button>
                     </div>
                   </div>
                   <div className="p-0 overflow-auto flex-1">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 sticky top-0 z-10 text-gray-600 font-semibold border-b border-gray-200">
+                    <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                      <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                         <tr>
-                          <th className="py-3 px-4">Date</th>
-                          <th className="py-3 px-4">Invoice #</th>
-                          <th className="py-3 px-4">Customer</th>
-                          <th className="py-3 px-4">Total Bill</th>
-                          <th className="py-3 px-4">Paid</th>
-                          <th className="py-3 px-4">Change/Debt</th>
-                          <th className="py-3 px-4">Seller</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">S/N</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Date</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Invoice #</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Customer</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Total Bill</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Paid</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Change/Debt</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Seller</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {getTransactions()
                           .slice((transPage - 1) * itemsPerPage, transPage * itemsPerPage)
                           .map((t: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="py-3 px-4">{new Date(t.sale_date).toLocaleDateString()}</td>
-                              <td className="py-3 px-4 font-medium">{t.invoice_number}</td>
-                              <td className="py-3 px-4">{t.customer_name || '-'}</td>
-                              <td className="py-3 px-4 font-bold">TZS {t.invoice_total?.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-green-600">TZS {t.amount_paid?.toLocaleString()}</td>
-                              <td className={`py-3 px-4 font-medium ${t.change_amount < 0 ? 'text-red-600' : 'text-orange-600'}`}>
+                            <tr key={idx} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                              <td className="py-3 px-4 text-gray-500 border border-gray-300 text-center">{(transPage - 1) * itemsPerPage + idx + 1}</td>
+                              <td className="py-3 px-4 border border-gray-300 whitespace-nowrap">{new Date(t.sale_date).toLocaleDateString()}</td>
+                              <td className="py-3 px-4 font-medium border border-gray-300">{t.invoice_number}</td>
+                              <td className="py-3 px-4 border border-gray-300">{t.customer_name || '-'}</td>
+                              <td className="py-3 px-4 font-bold border border-gray-300">TZS {t.invoice_total?.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-green-600 border border-gray-300">TZS {t.amount_paid?.toLocaleString()}</td>
+                              <td className={`py-3 px-4 font-medium border border-gray-300 ${t.change_amount < 0 ? 'text-red-600' : 'text-orange-600'}`}>
                                 {t.change_amount < 0 ? 'Debt: ' : ''}TZS {Math.abs(t.change_amount || 0).toLocaleString()}
                               </td>
-                              <td className="py-3 px-4">{t.seller_name}</td>
+                              <td className="py-3 px-4 border border-gray-300">{t.seller_name}</td>
                             </tr>
                           ))}
                       </tbody>
-                      <tfoot className="bg-gray-100 font-bold text-gray-900 border-t border-gray-200">
+                      <tfoot className="bg-gray-100 font-bold text-gray-900 border-t-2 border-gray-300">
                         <tr>
-                          <td colSpan={3} className="py-4 px-4 text-right">Totals:</td>
-                          <td className="py-4 px-4">TZS {getTransactions().reduce((s: number, t: any) => s + (t.invoice_total || 0), 0).toLocaleString()}</td>
-                          <td className="py-4 px-4 text-green-700">TZS {getTransactions().reduce((s: number, t: any) => s + (t.amount_paid || 0), 0).toLocaleString()}</td>
-                          <td className="py-4 px-4 text-orange-700">TZS {getTransactions().reduce((s: number, t: any) => s + (t.change_amount || 0), 0).toLocaleString()}</td>
-                          <td></td>
+                          <td colSpan={3} className="py-4 px-4 text-right border border-gray-300">Totals:</td>
+                          <td className="py-4 px-4 border border-gray-300">TZS {getTransactions().reduce((s: number, t: any) => s + (t.invoice_total || 0), 0).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-green-700 border border-gray-300">TZS {getTransactions().reduce((s: number, t: any) => s + (t.amount_paid || 0), 0).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-orange-700 border border-gray-300">TZS {getTransactions().reduce((s: number, t: any) => s + (t.change_amount || 0), 0).toLocaleString()}</td>
+                          <td className="border border-gray-300"></td>
+                          <td className="border border-gray-300"></td>
                         </tr>
                       </tfoot>
                     </table>
@@ -1084,80 +1188,116 @@ export default function SalesAnalyticsPage() {
             showItemsModal && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-start bg-gray-50/50 rounded-t-2xl">
-                    <div>
-                      <h2 className="text-xl font-bold text-gray-900">Sold Items Report</h2>
-                      <div className="flex gap-3 mt-2 text-sm font-medium">
-                        <span className="bg-green-50 text-green-700 px-3 py-1 rounded-full border border-green-100">
-                          Total Items: {getSoldItems().reduce((s: number, i: any) => s + (i.quantity || 0), 0)}
-                        </span>
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
-                          Total Value: TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_total || 0), 0).toLocaleString()}
-                        </span>
-                        <span className="bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100">
-                          Total Profit: TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_profit || 0), 0).toLocaleString()}
-                        </span>
-                        <span className="bg-purple-50 text-purple-700 px-3 py-1 rounded-full border border-purple-100">
-                          Remaining Stock Value: TZS {getSoldItems().reduce((s: number, i: any) => s + (i.stock_value || 0), 0).toLocaleString()}
-                        </span>
+                  <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center bg-gray-50/50 rounded-t-2xl gap-6">
+                    <div className="w-full xl:w-auto">
+                      <h2 className="text-xl font-bold text-gray-900 mb-4">Sold Items Report</h2>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                          <div className="p-2 bg-green-50 rounded-lg">
+                            <ShoppingCart className="w-5 h-5 text-green-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Items</p>
+                            <p className="text-sm font-bold text-gray-900">{getSoldItems().reduce((s: number, i: any) => s + (i.quantity || 0), 0)}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                          <div className="p-2 bg-blue-50 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-blue-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Value</p>
+                            <p className="text-sm font-bold text-gray-900">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_total || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                          <div className="p-2 bg-indigo-50 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-indigo-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Total Profit</p>
+                            <p className="text-sm font-bold text-gray-900">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_profit || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </div>
+
+                        <div className="bg-white p-3 rounded-xl border border-gray-200 shadow-sm flex items-center gap-3">
+                          <div className="p-2 bg-purple-50 rounded-lg">
+                            <TrendingUp className="w-5 h-5 text-purple-600" />
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-600 font-medium">Stock Value</p>
+                            <p className="text-sm font-bold text-gray-900">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.stock_value || 0), 0).toLocaleString()}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex gap-2 w-full xl:w-auto">
                       <button
-                        onClick={() => handleExport(() => exportItems('excel'))}
-                        disabled={isExporting}
-                        className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportItems('excel'), 'items-excel')}
+                        disabled={exportingId === 'items-excel'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-green-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />} Excel
+                        {exportingId === 'items-excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                        Excel
                       </button>
                       <button
-                        onClick={() => handleExport(() => exportItems('pdf'))}
-                        disabled={isExporting}
-                        className="px-3 py-2 bg-red-600 text-white rounded-lg text-sm font-medium flex items-center gap-2 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportItems('pdf'), 'items-pdf')}
+                        disabled={exportingId === 'items-pdf'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-red-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                        {exportingId === 'items-pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        PDF
                       </button>
-                      <button onClick={() => setShowItemsModal(false)} className="px-3 py-2 hover:bg-gray-100 rounded-lg text-gray-500 text-sm font-medium">
+                      <button
+                        onClick={() => setShowItemsModal(false)}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm"
+                      >
                         Close
                       </button>
                     </div>
                   </div>
                   <div className="p-0 overflow-auto flex-1">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 sticky top-0 z-10 text-gray-600 font-semibold border-b border-gray-200">
+                    <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                      <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                         <tr>
-                          <th className="py-3 px-4">Date</th>
-                          <th className="py-3 px-4">Item</th>
-                          <th className="py-3 px-4">Qty Sold</th>
-                          <th className="py-3 px-4">Item Total</th>
-                          <th className="py-3 px-4">Profit</th>
-                          <th className="py-3 px-4">Stock Left</th>
-                          <th className="py-3 px-4">Stock Value</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">S/N</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Date</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Item</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap text-center">Qty</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Item Total</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Profit</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap text-center">Stock</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Stock Value</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {getSoldItems()
                           .slice((itemsPage - 1) * itemsPerPage, itemsPage * itemsPerPage)
                           .map((i: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="py-3 px-4">{new Date(i.sale_date).toLocaleDateString()}</td>
-                              <td className="py-3 px-4 font-medium">{i.medicine_name}</td>
-                              <td className="py-3 px-4">{i.quantity}</td>
-                              <td className="py-3 px-4 font-bold">TZS {i.item_total?.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-green-600">TZS {i.item_profit?.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-blue-600">{i.current_stock}</td>
-                              <td className="py-3 px-4 text-gray-500">TZS {i.stock_value?.toLocaleString()}</td>
+                            <tr key={idx} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                              <td className="py-3 px-4 text-gray-500 border border-gray-300 text-center">{(itemsPage - 1) * itemsPerPage + idx + 1}</td>
+                              <td className="py-3 px-4 border border-gray-300 whitespace-nowrap">{new Date(i.sale_date).toLocaleDateString()}</td>
+                              <td className="py-3 px-4 font-medium border border-gray-300">{i.medicine_name}</td>
+                              <td className="py-3 px-4 border border-gray-300 text-center">{i.quantity}</td>
+                              <td className="py-3 px-4 font-bold border border-gray-300">TZS {i.item_total?.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-green-600 border border-gray-300">TZS {i.item_profit?.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-blue-600 border border-gray-300 text-center">{i.current_stock}</td>
+                              <td className="py-3 px-4 text-gray-500 border border-gray-300">TZS {i.stock_value?.toLocaleString()}</td>
                             </tr>
                           ))}
                       </tbody>
-                      <tfoot className="bg-gray-100 font-bold text-gray-900 border-t border-gray-200">
+                      <tfoot className="bg-gray-100 font-bold text-gray-900 border-t-2 border-gray-300">
                         <tr>
-                          <td colSpan={2} className="py-4 px-4 text-right">Totals:</td>
-                          <td className="py-4 px-4">{getSoldItems().reduce((s: number, i: any) => s + (i.quantity || 0), 0)}</td>
-                          <td className="py-4 px-4 text-green-700">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_total || 0), 0).toLocaleString()}</td>
-                          <td className="py-4 px-4 text-blue-700">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_profit || 0), 0).toLocaleString()}</td>
-                          <td></td>
-                          <td className="py-4 px-4 text-purple-700">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.stock_value || 0), 0).toLocaleString()}</td>
+                          <td colSpan={2} className="py-4 px-4 text-right border border-gray-300">Totals:</td>
+                          <td className="border border-gray-300"></td>
+                          <td className="py-4 px-4 border border-gray-300 text-center">{getSoldItems().reduce((s: number, i: any) => s + (i.quantity || 0), 0)}</td>
+                          <td className="py-4 px-4 text-green-700 border border-gray-300">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_total || 0), 0).toLocaleString()}</td>
+                          <td className="py-4 px-4 text-blue-700 border border-gray-300">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.item_profit || 0), 0).toLocaleString()}</td>
+                          <td className="border border-gray-300"></td>
+                          <td className="py-4 px-4 text-purple-700 border border-gray-300">TZS {getSoldItems().reduce((s: number, i: any) => s + (i.stock_value || 0), 0).toLocaleString()}</td>
                         </tr>
                       </tfoot>
                     </table>
@@ -1337,57 +1477,124 @@ export default function SalesAnalyticsPage() {
             )
           }
 
-          {/* Top Medicines Modal */}
+
+          {/* Hourly Details Modal */}
+          {showHourlyModal && selectedHour !== null && (
+            <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
+                <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900">Hourly Sales Details</h2>
+                    <p className="text-sm text-gray-500">Transactions at {selectedHour}:00 - {selectedHour}:59</p>
+                  </div>
+                  <button onClick={() => setShowHourlyModal(false)} className="bg-gray-200 text-gray-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-gray-300 transition-colors">
+                    Close
+                  </button>
+                </div>
+                <div className="p-6 overflow-y-auto">
+                  <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                    <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
+                      <tr>
+                        <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Time</th>
+                        <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Invoice #</th>
+                        <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Customer</th>
+                        <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Medicine</th>
+                        <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Amount</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {analytics.detailedSales
+                        .filter((s: any) => new Date(s.sale_date).getHours() === selectedHour)
+                        .map((sale: any, idx: number) => (
+                          <tr key={idx} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                            <td className="py-3 px-4 border border-gray-300">
+                              {new Date(sale.sale_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                            </td>
+                            <td className="py-3 px-4 font-medium text-primary-600 border border-gray-300">
+                              {sale.invoice_number}
+                            </td>
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300">
+                              {sale.customer_name || 'Walk-in'}
+                            </td>
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300">
+                              {sale.medicine_name} <span className="text-gray-500 text-xs">x{sale.quantity}</span>
+                            </td>
+                            <td className="py-3 px-4 font-semibold text-gray-900 border border-gray-300">
+                              TZS {sale.item_total?.toLocaleString()}
+                            </td>
+                          </tr>
+                        ))}
+                      {analytics.detailedSales.filter((s: any) => new Date(s.sale_date).getHours() === selectedHour).length === 0 && (
+                        <tr>
+                          <td colSpan={5} className="py-8 text-center text-gray-500 border border-gray-300">
+                            No transactions found for this hour.
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          )}
           {
             showTopMedicinesModal && (
               <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
                 <div className="bg-white rounded-2xl w-full max-w-6xl max-h-[90vh] flex flex-col">
-                  <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl">
-                    <div>
+                  <div className="p-6 border-b border-gray-100 flex flex-col xl:flex-row justify-between items-start xl:items-center bg-gray-50/50 rounded-t-2xl gap-6">
+                    <div className="w-full xl:w-auto">
                       <h2 className="text-xl font-bold text-gray-900">Top Medicines Report</h2>
-                      <p className="text-sm text-gray-500">Best selling products by revenue and quantity</p>
+                      <p className="text-sm text-gray-500 mt-1">Best selling products by revenue and quantity</p>
                     </div>
-                    <div className="flex gap-2">
+
+                    <div className="flex gap-2 w-full xl:w-auto">
                       <button
-                        onClick={() => handleExport(() => exportTopMedicines('excel'))}
-                        disabled={isExporting}
-                        className="px-3 py-1.5 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportTopMedicines('excel'), 'top-excel')}
+                        disabled={exportingId === 'top-excel'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-green-50 text-green-700 border border-green-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-green-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />} Excel
+                        {exportingId === 'top-excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                        Excel
                       </button>
                       <button
-                        onClick={() => handleExport(() => exportTopMedicines('pdf'))}
-                        disabled={isExporting}
-                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                        onClick={() => handleExport(() => exportTopMedicines('pdf'), 'top-pdf')}
+                        disabled={exportingId === 'top-pdf'}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-red-50 text-red-700 border border-red-200 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-red-100 transition-all shadow-sm disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />} PDF
+                        {exportingId === 'top-pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                        PDF
                       </button>
-                      <button onClick={() => setShowTopMedicinesModal(false)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:bg-gray-300">
+                      <button
+                        onClick={() => setShowTopMedicinesModal(false)}
+                        className="flex-1 xl:flex-none justify-center px-4 py-2.5 bg-white text-gray-700 border border-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-all shadow-sm"
+                      >
                         Close
                       </button>
                     </div>
                   </div>
                   <div className="p-0 overflow-auto flex-1">
-                    <table className="w-full text-sm text-left">
-                      <thead className="bg-gray-50 sticky top-0 z-10 text-gray-600 font-semibold border-b border-gray-200">
+                    <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                      <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                         <tr>
-                          <th className="py-3 px-4">Medicine</th>
-                          <th className="py-3 px-4">Qty Sold</th>
-                          <th className="py-3 px-4">Revenue</th>
-                          <th className="py-3 px-4">Profit</th>
-                          <th className="py-3 px-4">Freq</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">S/N</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Medicine</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap text-center">Qty Sold</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Revenue</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Profit</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap text-center">Freq</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-gray-100">
+                      <tbody>
                         {getTopMedicines()
                           .slice((topMedPage - 1) * itemsPerPage, topMedPage * itemsPerPage)
                           .map((m: any, idx: number) => (
-                            <tr key={idx} className="hover:bg-gray-50">
-                              <td className="py-3 px-4 font-medium">{m.medicine_name}</td>
-                              <td className="py-3 px-4">{m.total_quantity}</td>
-                              <td className="py-3 px-4 font-bold text-green-600">TZS {m.total_revenue?.toLocaleString()}</td>
-                              <td className="py-3 px-4 text-blue-600">TZS {m.total_profit?.toLocaleString()}</td>
-                              <td className="py-3 px-4">{m.times_sold}</td>
+                            <tr key={idx} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                              <td className="py-3 px-4 text-gray-500 border border-gray-300 text-center">{(topMedPage - 1) * itemsPerPage + idx + 1}</td>
+                              <td className="py-3 px-4 font-medium border border-gray-300">{m.medicine_name}</td>
+                              <td className="py-3 px-4 border border-gray-300 text-center">{m.total_quantity}</td>
+                              <td className="py-3 px-4 font-bold text-green-600 border border-gray-300">TZS {m.total_revenue?.toLocaleString()}</td>
+                              <td className="py-3 px-4 text-blue-600 border border-gray-300">TZS {m.total_profit?.toLocaleString()}</td>
+                              <td className="py-3 px-4 border border-gray-300 text-center">{m.times_sold}</td>
                             </tr>
                           ))}
                       </tbody>
@@ -1418,41 +1625,41 @@ export default function SalesAnalyticsPage() {
                       onClick={() => handleExport(() => {
                         exportToExcel();
                         setShowExportModal(false);
-                      })}
-                      disabled={isExporting}
+                      }, 'main-excel')}
+                      disabled={exportingId === 'main-excel'}
                       className="w-full px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
-                      <span>{isExporting ? 'Generating...' : 'Export to Excel'}</span>
+                      {exportingId === 'main-excel' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileSpreadsheet className="w-4 h-4" />}
+                      <span>{exportingId === 'main-excel' ? 'Generating...' : 'Export to Excel'}</span>
                     </button>
 
                     <button
                       onClick={() => handleExport(() => {
                         exportToPDF();
                         setShowExportModal(false);
-                      })}
-                      disabled={isExporting}
+                      }, 'main-pdf')}
+                      disabled={exportingId === 'main-pdf'}
                       className="w-full px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                      <span>{isExporting ? 'Generating...' : 'Export to PDF'}</span>
+                      {exportingId === 'main-pdf' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                      <span>{exportingId === 'main-pdf' ? 'Generating...' : 'Export to PDF'}</span>
                     </button>
 
                     <button
                       onClick={() => handleExport(() => {
                         exportToWord();
                         setShowExportModal(false);
-                      })}
-                      disabled={isExporting}
+                      }, 'main-word')}
+                      disabled={exportingId === 'main-word'}
                       className="w-full px-3 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center justify-center space-x-2 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      {isExporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                      <span>{isExporting ? 'Generating...' : 'Export to Word'}</span>
+                      {exportingId === 'main-word' ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
+                      <span>{exportingId === 'main-word' ? 'Generating...' : 'Export to Word'}</span>
                     </button>
 
                     <button
                       onClick={() => setShowExportModal(false)}
-                      disabled={isExporting}
+                      disabled={!!exportingId}
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium disabled:opacity-50"
                     >
                       Cancel

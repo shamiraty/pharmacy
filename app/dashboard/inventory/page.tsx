@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Package, AlertTriangle, TrendingDown, TrendingUp, Eye, X, Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 import Pagination from '@/components/Pagination';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Swal from 'sweetalert2';
@@ -196,76 +197,35 @@ export default function InventoryPage() {
       </div>
 
       {loading ? (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-sm z-10">
-                <tr>
-                  {[...Array(7)].map((_, i) => (
-                    <th key={i} className="text-left py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-20 animate-pulse"></div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...Array(10)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                        <div className="h-3 bg-gray-100 rounded w-20 animate-pulse"></div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-12 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-12 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-8 w-8 bg-gray-100 rounded animate-pulse"></div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <TableSkeleton columns={7} rows={10} />
       ) : (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-sm z-10">
+            <table className="w-full min-w-[1000px] text-sm text-left border-collapse border border-gray-300">
+              <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
+                    S/N
+                  </th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Medicine
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Category
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Current Stock
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Reorder Level
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Status
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Value
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -277,42 +237,45 @@ export default function InventoryPage() {
                     (currentPage - 1) * itemsPerPage,
                     currentPage * itemsPerPage
                   );
-                  return paginatedMedicines.map((medicine) => {
+                  return paginatedMedicines.map((medicine, idx) => {
                     const stockStatus = getStockStatus(medicine);
                     const value = medicine.quantity_in_stock * (medicine.selling_price_full || 0);
 
                     return (
                       <tr
                         key={medicine.id}
-                        className="border-b border-gray-50 hover:bg-gray-50 transition-colors duration-200"
+                        className="even:bg-gray-50 hover:bg-blue-50 transition-colors"
                       >
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">
+                          {(currentPage - 1) * itemsPerPage + idx + 1}
+                        </td>
+                        <td className="py-3 px-4 border border-gray-300">
                           <div className="font-medium text-gray-900">{medicine.name}</div>
                           {medicine.generic_name && (
                             <div className="text-sm text-gray-500">{medicine.generic_name}</div>
                           )}
                         </td>
-                        <td className="py-4 px-6 text-gray-700">{medicine.category_name}</td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">{medicine.category_name}</td>
+                        <td className="py-3 px-4 border border-gray-300">
                           <span className="font-semibold text-gray-900">
                             {medicine.quantity_in_stock}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-gray-700">{medicine.reorder_level}</td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">{medicine.reorder_level}</td>
+                        <td className="py-3 px-4 border border-gray-300">
                           <span
                             className={`px-3 py-1 rounded-full text-xs font-medium ${stockStatus.color} ${stockStatus.bgColor}`}
                           >
                             {stockStatus.status}
                           </span>
                         </td>
-                        <td className="py-4 px-6 text-gray-700">
+                        <td className="py-3 px-4 text-gray-700 border border-gray-300">
                           TZS {value.toLocaleString()}
                         </td>
-                        <td className="py-4 px-6">
+                        <td className="py-3 px-4 border border-gray-300">
                           <button
                             onClick={() => viewSalesHistory(medicine)}
-                            className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                            className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                             title="View Sales History"
                           >
                             <Eye className="w-4 h-4" />
@@ -417,23 +380,27 @@ export default function InventoryPage() {
               ) : (
                 <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
                   <div className="overflow-x-auto">
-                    <table className="w-full">
-                      <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-sm z-10">
+                    <table className="w-full text-sm text-left border-collapse border border-gray-300">
+                      <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                         <tr>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Tarehe</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Invoice #</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Kiasi</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Bei</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Jumla</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Mteja</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Aliyeuza</th>
-                          <th className="text-left py-3 px-4 text-sm font-semibold text-gray-700">Payment</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">S/N</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Tarehe</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Invoice #</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Kiasi</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Bei</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Jumla</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Mteja</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Aliyeuza</th>
+                          <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">Payment</th>
                         </tr>
                       </thead>
                       <tbody>
                         {salesHistory.map((sale, index) => (
-                          <tr key={index} className="border-b border-gray-100 hover:bg-gray-50 transition-colors">
-                            <td className="py-3 px-4 text-sm text-gray-700">
+                          <tr key={index} className="even:bg-gray-50 hover:bg-blue-50 transition-colors">
+                            <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">
+                              {index + 1}
+                            </td>
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300 whitespace-nowrap">
                               {new Date(sale.sale_date).toLocaleDateString('sw-TZ', {
                                 year: 'numeric',
                                 month: 'short',
@@ -442,25 +409,25 @@ export default function InventoryPage() {
                                 minute: '2-digit'
                               })}
                             </td>
-                            <td className="py-3 px-4 text-sm font-medium text-primary-600">
+                            <td className="py-3 px-4 font-medium text-primary-600 border border-gray-300">
                               {sale.invoice_number}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-700 font-semibold">
+                            <td className="py-3 px-4 text-gray-700 font-semibold border border-gray-300">
                               {sale.quantity}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-700">
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300">
                               TZS {sale.unit_price?.toLocaleString() || 0}
                             </td>
-                            <td className="py-3 px-4 text-sm font-semibold text-gray-900">
+                            <td className="py-3 px-4 font-semibold text-gray-900 border border-gray-300">
                               TZS {sale.subtotal?.toLocaleString() || 0}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-700">
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300">
                               {sale.customer_name || 'Walk-in'}
                             </td>
-                            <td className="py-3 px-4 text-sm text-gray-700">
+                            <td className="py-3 px-4 text-gray-700 border border-gray-300">
                               {sale.served_by_name || 'Unknown'}
                             </td>
-                            <td className="py-3 px-4 text-sm">
+                            <td className="py-3 px-4 border border-gray-300">
                               <span className="px-2 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                                 {sale.payment_method}
                               </span>
@@ -468,18 +435,18 @@ export default function InventoryPage() {
                           </tr>
                         ))}
                       </tbody>
-                      <tfoot className="bg-gray-50 border-t-2 border-gray-300">
+                      <tfoot className="bg-gray-100 border-t-2 border-gray-300 font-bold">
                         <tr>
-                          <td colSpan={2} className="py-3 px-4 text-sm font-semibold text-gray-900">
+                          <td colSpan={3} className="py-3 px-4 text-right border border-gray-300">
                             JUMLA / TOTAL
                           </td>
-                          <td className="py-3 px-4 text-sm font-bold text-gray-900">
+                          <td className="py-3 px-4 border border-gray-300">
                             {salesHistory.reduce((sum, s) => sum + s.quantity, 0)}
                           </td>
-                          <td colSpan={2} className="py-3 px-4 text-sm font-bold text-primary-600">
+                          <td colSpan={2} className="py-3 px-4 text-primary-600 border border-gray-300">
                             TZS {salesHistory.reduce((sum, s) => sum + s.subtotal, 0).toLocaleString()}
                           </td>
-                          <td colSpan={3}></td>
+                          <td colSpan={3} className="border border-gray-300"></td>
                         </tr>
                       </tfoot>
                     </table>

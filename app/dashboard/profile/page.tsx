@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Lock, Mail, Phone, Calendar, Shield, Eye, EyeOff } from 'lucide-react';
 import { getUserSession } from '@/lib/auth';
+import { Skeleton } from '@/components/ui/Skeleton';
 import Swal from 'sweetalert2';
 
 export default function ProfilePage() {
@@ -92,8 +93,29 @@ export default function ProfilePage() {
 
   if (!user) {
     return (
-      <div className="flex items-center justify-center h-96">
-        <div className="text-gray-500">Loading...</div>
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <Skeleton className="h-8 w-48" />
+          <Skeleton className="h-4 w-64" />
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 overflow-hidden">
+          <div className="px-6 py-8 border-b border-gray-100 dark:border-gray-700 flex items-center space-x-4">
+            <Skeleton className="w-20 h-20 rounded-full" />
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-48" />
+              <Skeleton className="h-4 w-32" />
+            </div>
+          </div>
+          <div className="p-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          </div>
+        </div>
       </div>
     );
   }

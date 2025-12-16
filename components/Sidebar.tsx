@@ -82,24 +82,30 @@ interface SidebarProps {
   setCollapsed: (collapsed: boolean) => void;
   mobileOpen: boolean;
   setMobileOpen: (open: boolean) => void;
+  loadingPath: string | null;
+  setLoadingPath: (path: string | null) => void;
 }
 
 export default function Sidebar({
   collapsed,
   setCollapsed,
   mobileOpen,
-  setMobileOpen
+  setMobileOpen,
+  loadingPath,
+  setLoadingPath
 }: SidebarProps) {
-  const [loadingPath, setLoadingPath] = useState<string | null>(null);
   const pathname = usePathname();
   const router = useRouter();
 
-  // Reset loading state when pathname changes
+  // Reset loading state and close mobile menu when navigation completes
   useEffect(() => {
     if (loadingPath && pathname === loadingPath) {
       setLoadingPath(null);
+      if (mobileOpen) {
+        setMobileOpen(false);
+      }
     }
-  }, [pathname, loadingPath]);
+  }, [pathname, loadingPath, mobileOpen, setLoadingPath, setMobileOpen]);
 
   // Trigger auto-backup on mount
   useEffect(() => {
@@ -171,43 +177,39 @@ export default function Sidebar({
                       e.preventDefault();
                       if (pathname !== item.href && !loadingPath) {
                         setLoadingPath(item.href);
-                        setMobileOpen(false);
+                        // Do NOT close mobile menu here. Wait for useEffect on pathname change.
                         router.push(item.href);
                       }
                     }}
-                    disabled={isLoading}
-                    className={`
-                    w-full flex items-center space-x-3 px-3 py-3 rounded-lg transition-all duration-200
-                    ${isActive
-                        ? 'bg-white/20 shadow-lg scale-105 backdrop-blur-sm'
-                        : 'hover:bg-white/10 hover:scale-102'
-                      }
-                    ${isLoading ? 'opacity-75 cursor-wait' : 'cursor-pointer'}
-                    group relative
-                  `}
+                    disabled={loadingPath !== null}
+                    className={`flex w-full items-center p-3 rounded-xl transition-all duration-200 group relative overflow-hidden ${pathname === item.href
+                      ? 'bg-gradient-to-r from-white/20 to-white/5 text-white shadow-lg border border-white/10'
+                      : 'text-primary-100 hover:bg-white/10 hover:text-white'
+                      }`}
                   >
-                    {isLoading ? (
-                      <Loader2
-                        className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'
-                          } flex-shrink-0 text-white animate-spin`}
-                      />
+                    {/* Active Indicator */}
+                    {pathname === item.href && (
+                      <div className="absolute left-0 top-0 bottom-0 w-1 bg-white rounded-r-full" />
+                    )}
+
+                    {loadingPath === item.href ? (
+                      <div className="flex items-center justify-center w-full">
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        <span className="font-medium animate-pulse">Loading...</span>
+                      </div>
                     ) : (
-                      <Icon
-                        className={`${collapsed ? 'w-6 h-6' : 'w-5 h-5'
-                          } flex-shrink-0 ${isActive ? 'text-white' : 'text-primary-100'
-                          } group-hover:text-white transition-colors`}
-                      />
-                    )}
-                    {!collapsed && (
-                      <span
-                        className={`text-sm font-medium ${isActive ? 'text-white' : 'text-primary-50'
-                          } group-hover:text-white transition-colors`}
-                      >
-                        {item.title}
-                      </span>
-                    )}
-                    {isActive && !isLoading && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-white rounded-r-full" />
+                      <div className="flex items-center w-full">
+                        <Icon
+                          className={`w-5 h-5 mr-3 transition-transform group-hover:scale-110 ${pathname === item.href ? 'text-white' : 'text-primary-200 group-hover:text-white'
+                            }`}
+                        />
+                        {!collapsed && (
+                          <span className="font-medium flex-1 text-left">{item.title}</span>
+                        )}
+                        {pathname === item.href && !collapsed && (
+                          <ChevronRight className="w-4 h-4 ml-auto text-white" />
+                        )}
+                      </div>
                     )}
                   </button>
                 </li>

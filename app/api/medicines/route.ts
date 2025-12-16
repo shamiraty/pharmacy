@@ -9,14 +9,40 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
     const minPrice = searchParams.get('minPrice');
     const maxPrice = searchParams.get('maxPrice');
-    const startDate = searchParams.get('startDate'); // Created At Start
-    const endDate = searchParams.get('endDate'); // Created At End
-    const month = searchParams.get('month'); // Filter by Month number (1-12)
-    const year = searchParams.get('year'); // Filter by Year
+    const startDate = searchParams.get('startDate');
+    const endDate = searchParams.get('endDate');
+    const month = searchParams.get('month');
+    const year = searchParams.get('year');
+
+    const salesStartDate = searchParams.get('salesStartDate');
+    const salesEndDate = searchParams.get('salesEndDate');
 
     // Base WHERE conditions
     let whereClause = `WHERE 1=1`;
     const params: any[] = [];
+
+    // Sales Subquery Logic
+    let salesDateCondition = "";
+    const salesParams: any[] = [];
+
+    // We need to join sales to filter by date reliably
+    // Subquery constraint:
+    // WHERE si.medicine_id = m.id AND EXISTS (SELECT 1 FROM sales s WHERE s.id = si.sale_id AND s.sale_date >= ? ...)
+
+    if (salesStartDate) {
+      salesDateCondition += " AND s.sale_date >= date(?)";
+      salesParams.push(salesStartDate);
+    }
+    if (salesEndDate) {
+      salesDateCondition += " AND s.sale_date <= date(?)";
+      salesParams.push(salesEndDate);
+    }
+
+    // ... inside SQL ...
+    // (SELECT COUNT(*) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE si.medicine_id = m.id ${salesDateCondition})
+
+    // Params construction:
+    // query(sql, [...salesParams, ...salesParams, ...salesParams, ...filterParams])
 
     if (search) {
       whereClause += ` AND (m.name LIKE ? OR m.generic_name LIKE ? OR m.diseases_treated LIKE ?)`;
@@ -65,9 +91,9 @@ export async function GET(request: NextRequest) {
       SELECT
         m.*,
         mc.name as category_name,
-        (SELECT COUNT(*) FROM sale_items si WHERE si.medicine_id = m.id) as times_sold,
-        (SELECT COALESCE(SUM(si.quantity), 0) FROM sale_items si WHERE si.medicine_id = m.id) as total_sold_qty,
-        (SELECT COALESCE(SUM(si.total_price), 0) FROM sale_items si WHERE si.medicine_id = m.id) as total_sold_value,
+        (SELECT COUNT(*) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE si.medicine_id = m.id ${salesDateCondition}) as times_sold,
+        (SELECT COALESCE(SUM(si.quantity), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE si.medicine_id = m.id ${salesDateCondition}) as total_sold_qty,
+        (SELECT COALESCE(SUM(si.total_price), 0) FROM sale_items si JOIN sales s ON si.sale_id = s.id WHERE si.medicine_id = m.id ${salesDateCondition}) as total_sold_value,
         CASE
           WHEN date(m.expiry_date) < date('now') THEN 'expired'
           WHEN date(m.expiry_date) <= date('now', '+30 days') THEN 'expiring_soon'
@@ -90,7 +116,7 @@ export async function GET(request: NextRequest) {
 
     sql += ` ORDER BY m.created_at DESC`;
 
-    const medicines: any[] = query(sql, params);
+    const medicines: any[] = query(sql, [...salesParams, ...salesParams, ...salesParams, ...params]);
 
     // Calculate Summary Stats from the RESULT set (to respect all filters including status)
     // Calculating here in JS is roughly fine for typical inventory sizes (< 10k). 

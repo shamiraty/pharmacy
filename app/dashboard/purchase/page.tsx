@@ -5,6 +5,7 @@ import { Package, Plus, Calendar, Eye, X, DollarSign } from 'lucide-react';
 import Swal from 'sweetalert2';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Pagination from '@/components/Pagination';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 interface Purchase {
   id: number;
@@ -122,28 +123,31 @@ export default function PurchasePage() {
       {/* Purchases Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <LoadingSpinner message="Loading purchases..." />
+          <TableSkeleton columns={6} rows={10} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+            <table className="w-full text-sm text-left border-collapse border border-gray-300">
+              <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
+                    S/N
+                  </th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Tarehe
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Dawa
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Supplier
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Kiasi
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Bei ya Jumla
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
@@ -151,32 +155,35 @@ export default function PurchasePage() {
               <tbody>
                 {paginatedPurchases.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="text-center py-12 text-gray-500">
+                    <td colSpan={7} className="text-center py-12 text-gray-500 border border-gray-300">
                       <Package className="w-12 h-12 mx-auto mb-4 text-gray-400" />
                       <p>No purchase records found</p>
                     </td>
                   </tr>
                 ) : (
-                  paginatedPurchases.map((purchase) => (
+                  paginatedPurchases.map((purchase, index) => (
                     <tr
                       key={purchase.id}
-                      className="border-b border-gray-100 hover:bg-gray-50 transition-colors"
+                      className="even:bg-gray-50 hover:bg-blue-50 transition-colors"
                     >
-                      <td className="py-4 px-6 text-gray-700">
+                      <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">
+                        {(currentPage - 1) * itemsPerPage + index + 1}
+                      </td>
+                      <td className="py-3 px-4 text-gray-700 border border-gray-300">
                         {new Date(purchase.purchase_date).toLocaleDateString('sw-TZ')}
                       </td>
-                      <td className="py-4 px-6 font-medium text-gray-900">
+                      <td className="py-3 px-4 font-medium text-gray-900 border border-gray-300">
                         {purchase.medicine_name}
                       </td>
-                      <td className="py-4 px-6 text-gray-700">{purchase.supplier}</td>
-                      <td className="py-4 px-6 text-gray-700">{purchase.quantity}</td>
-                      <td className="py-4 px-6 font-semibold text-gray-900">
+                      <td className="py-3 px-4 text-gray-700 border border-gray-300">{purchase.supplier}</td>
+                      <td className="py-3 px-4 text-gray-700 border border-gray-300">{purchase.quantity}</td>
+                      <td className="py-3 px-4 font-semibold text-gray-900 border border-gray-300">
                         TZS {purchase.total_cost.toLocaleString()}
                       </td>
-                      <td className="py-4 px-6">
+                      <td className="py-3 px-4 border border-gray-300">
                         <button
                           onClick={() => handleView(purchase)}
-                          className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                          className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors"
                           title="View Details"
                         >
                           <Eye className="w-4 h-4" />

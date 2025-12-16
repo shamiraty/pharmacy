@@ -63,8 +63,7 @@ export async function GET() {
        JOIN sales s ON si.sale_id = s.id
        WHERE s.status = 'completed'
        GROUP BY m.id, m.name
-       ORDER BY total_sold DESC
-       LIMIT 5`
+       ORDER BY total_sold DESC`
     );
 
     return NextResponse.json({

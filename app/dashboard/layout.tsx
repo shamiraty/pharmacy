@@ -11,6 +11,7 @@ export default function DashboardLayout({
 }) {
   const [collapsed, setCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [loadingPath, setLoadingPath] = useState<string | null>(null);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-200">
@@ -19,10 +20,13 @@ export default function DashboardLayout({
         setCollapsed={setCollapsed}
         mobileOpen={mobileMenuOpen}
         setMobileOpen={setMobileMenuOpen}
+        loadingPath={loadingPath}
+        setLoadingPath={setLoadingPath}
       />
       <Topbar
         collapsed={collapsed}
         setMobileMenuOpen={setMobileMenuOpen}
+        isLoading={!!loadingPath}
       />
       <main className={`transition-all duration-300 ease-in-out pt-16 min-h-screen ${collapsed ? 'lg:ml-20' : 'lg:ml-64'
         }`}>

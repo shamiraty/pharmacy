@@ -7,6 +7,7 @@ import Pagination from '@/components/Pagination';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { TableSkeleton } from '@/components/ui/TableSkeleton';
 
 export default function InvoicesPage() {
   const [invoices, setInvoices] = useState<any[]>([]);
@@ -243,99 +244,66 @@ export default function InvoicesPage() {
       {/* Invoices Table */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         {loading ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  {[...Array(6)].map((_, i) => (
-                    <th key={i} className="text-left py-4 px-6">
-                      <div className="h-4 bg-gray-200 rounded w-24 animate-pulse"></div>
-                    </th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {[...Array(10)].map((_, i) => (
-                  <tr key={i} className="border-b border-gray-100">
-                    <td className="py-4 px-6">
-                      <div className="space-y-2">
-                        <div className="h-4 bg-gray-200 rounded w-32 animate-pulse"></div>
-                        <div className="h-3 bg-gray-100 rounded w-20 animate-pulse"></div>
-                      </div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-32 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-4 bg-gray-100 rounded w-24 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-6 bg-gray-100 rounded-full w-20 animate-pulse"></div>
-                    </td>
-                    <td className="py-4 px-6">
-                      <div className="h-8 w-8 bg-gray-100 rounded animate-pulse"></div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <TableSkeleton columns={6} rows={10} />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50/80 border-b border-gray-100 sticky top-0 backdrop-blur-sm z-10">
+            <table className="w-full text-sm text-left border-collapse border border-gray-300">
+              <thead className="bg-gray-100 sticky top-0 z-10 text-gray-700 font-semibold border-b-2 border-gray-300 shadow-sm">
                 <tr>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
+                    S/N
+                  </th>
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Invoice #
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Tarehe
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Mteja
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Kiasi
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Hali
                   </th>
-                  <th className="text-left py-4 px-6 text-sm font-semibold text-gray-700">
+                  <th className="py-3 px-4 border border-gray-300 whitespace-nowrap">
                     Actions
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {paginatedInvoices.map((invoice) => (
+                {paginatedInvoices.map((invoice, index) => (
                   <tr
                     key={invoice.id}
-                    className="border-b border-gray-50 hover:bg-gray-50 transition-colors duration-200"
+                    className="even:bg-gray-50 hover:bg-blue-50 transition-colors"
                   >
-                    <td className="py-4 px-6 font-medium text-primary-600">
+                    <td className="py-3 px-4 text-gray-500 font-medium border border-gray-300 text-center">
+                      {(currentPage - 1) * itemsPerPage + index + 1}
+                    </td>
+                    <td className="py-3 px-4 font-medium text-primary-600 border border-gray-300">
                       {invoice.invoice_number}
                     </td>
-                    <td className="py-4 px-6 text-gray-700">
+                    <td className="py-3 px-4 text-gray-700 border border-gray-300">
                       {new Date(invoice.sale_date).toLocaleDateString('sw-TZ')}
                     </td>
-                    <td className="py-4 px-6 text-gray-700">
+                    <td className="py-3 px-4 text-gray-700 border border-gray-300">
                       {invoice.customer_name || 'Walk-in'}
                     </td>
-                    <td className="py-4 px-6 font-semibold text-gray-900">
+                    <td className="py-3 px-4 font-semibold text-gray-900 border border-gray-300">
                       TZS {invoice.total_amount.toLocaleString()}
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4 border border-gray-300">
                       <span className="px-3 py-1 bg-green-100 text-green-800 text-xs font-medium rounded-full">
                         {invoice.status}
                       </span>
                     </td>
-                    <td className="py-4 px-6">
+                    <td className="py-3 px-4 border border-gray-300">
                       <button
                         onClick={() => downloadInvoice(invoice)}
                         disabled={downloadingId === invoice.id}
-                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                        className="p-2 text-blue-600 hover:bg-blue-100 rounded-lg transition-colors disabled:opacity-50"
                         title="Download PDF"
                       >
                         {downloadingId === invoice.id ? (
