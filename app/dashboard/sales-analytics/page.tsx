@@ -35,7 +35,7 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Pagination from '@/components/Pagination';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 type DateFilterType = 'today' | 'yesterday' | 'this_week' | 'this_month' | 'prev_month' | 'this_year' | 'jan_mar' | 'apr_jun' | 'jul_sep' | 'oct_dec' | 'jan_jun' | 'jul_dec';
 

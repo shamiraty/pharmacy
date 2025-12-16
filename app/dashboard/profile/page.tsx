@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { User, Lock, Mail, Phone, Calendar, Shield, Eye, EyeOff } from 'lucide-react';
 import { getUserSession } from '@/lib/auth';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import Swal from 'sweetalert2';
 
 export default function ProfilePage() {

@@ -17,7 +17,7 @@ import {
   Download,
   X
 } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import LoadingSpinner from '@/components/LoadingSpinner';
 import Pagination from '@/components/Pagination';
 import jsPDF from 'jspdf';

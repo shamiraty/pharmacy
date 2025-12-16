@@ -32,7 +32,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Swal from 'sweetalert2';
 import LoadingSpinner from '@/components/LoadingSpinner';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 
 export default function MedicineAnalyticsPage() {
   const [analytics, setAnalytics] = useState({

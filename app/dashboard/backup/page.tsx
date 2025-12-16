@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Database, Download, RotateCcw, AlertTriangle, FileText, Loader2, HardDrive, ShieldAlert, Trash2, Eye, X } from 'lucide-react';
-import { Skeleton } from '@/components/ui/Skeleton';
+import { Skeleton } from '@/components/ui/skeleton';
 import { TableSkeleton } from '@/components/ui/TableSkeleton';
 import Swal from 'sweetalert2';
 import { isAdmin } from '@/lib/auth';
